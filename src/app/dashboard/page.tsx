@@ -125,9 +125,9 @@ function AppContent() {
       setUser({ id: authUser.id, email: authUser.email })
       setLoading(false)
 
-      // Show onboarding on first visit
+      // Show onboarding on first visit (keyed per user)
       try {
-        if (!localStorage.getItem('af_onboarding_done')) {
+        if (!localStorage.getItem(`af_onboarding_done_${authUser.id}`)) {
           setOnboardingOpen(true)
         }
       } catch {
@@ -150,8 +150,10 @@ function AppContent() {
   const handleOnboardingClose = useCallback(() => {
     setOnboardingOpen(false)
     setSpotlightNav(undefined)
-    try { localStorage.setItem('af_onboarding_done', '1') } catch { /* ignore */ }
-  }, [])
+    try {
+      if (user?.id) localStorage.setItem(`af_onboarding_done_${user.id}`, '1')
+    } catch { /* ignore */ }
+  }, [user])
 
   const handleOnboardingFinish = useCallback(() => {
     handleOnboardingClose()
