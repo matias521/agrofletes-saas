@@ -303,7 +303,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .main { display: flex; flex-direction: column; min-width: 0; background: var(--surface-app); }
 
 .sidebar { background: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow: hidden; border-right: 1px solid #000; }
-.sidebar .brand { display: flex; align-items: center; padding: 14px 16px 12px; border-bottom: 1px solid var(--sidebar-bg-soft); background: #fff; }
+.sidebar .brand { display: flex; align-items: center; padding: 14px 16px 12px; border-bottom: 1px solid var(--sidebar-bg-soft); }
 .sidebar .brand img { display: block; max-width: 100%; height: auto; }
 .nav { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
 .nav .nav-section-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--sidebar-text-mute); padding: 14px 10px 6px; }

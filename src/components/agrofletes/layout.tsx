@@ -47,7 +47,7 @@ export function Sidebar({ active, onNavigate, plan, onLogout, user }: SidebarPro
       {/* Brand */}
       <div className="brand">
         <Image
-          src="/logo.jpg"
+          src="/logo.png"
           alt="AgroFletes"
           width={160}
           height={54}
