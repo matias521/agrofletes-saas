@@ -150,7 +150,8 @@ function AppContent() {
 
   const handleNuevoCamion = useCallback(async (data: NuevaUnidadData) => {
     const supabase = createClient()
-    const { data: row } = await supabase.from('camiones').insert({
+    const { data: row, error } = await supabase.from('camiones').insert({
+      user_id: user!.id,
       patente: data.patente.trim(),
       tipo: data.tipo,
       marca: data.marca || null,
@@ -166,8 +167,10 @@ function AppContent() {
     if (row) {
       setCamiones((prev) => [...prev, camionFromDB(row)])
       showToast(`Unidad ${row.patente} registrada.`)
+    } else if (error) {
+      showToast(`Error al guardar: ${error.message}`)
     }
-  }, [showToast])
+  }, [user, showToast])
 
   const handleLogout = useCallback(async () => {
     const supabase = createClient()
