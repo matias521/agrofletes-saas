@@ -46,14 +46,12 @@ export function Sidebar({ active, onNavigate, plan, onLogout, user }: SidebarPro
     <aside className="sidebar">
       {/* Brand */}
       <div className="brand">
-        <Image
-          src="/logo.png"
-          alt="AgroFletes"
-          width={160}
-          height={54}
-          style={{ objectFit: 'contain', objectPosition: 'left center' }}
-          priority
-        />
+        <div className="brand-mark">
+          <Image src="/icon-logo.png" alt="AgroFletes icon" width={28} height={28} style={{ objectFit: 'contain' }} priority />
+        </div>
+        <div className="brand-text">
+          <span className="name">AgroFletes</span>
+        </div>
       </div>
 
       {/* Main nav */}
