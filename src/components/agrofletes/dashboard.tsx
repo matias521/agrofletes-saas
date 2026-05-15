@@ -7,17 +7,20 @@ import {
   Viaje,
   Cliente,
   Camion,
+  AlertaFlota,
   VIAJES_POR_SEMANA,
   ESTADOS,
   formatMoney,
   formatDate,
   clienteById,
+  estadoVencimiento,
 } from '@/lib/agrofletes-data'
 
 interface DashboardPageProps {
   viajes: Viaje[]
   clientes: Cliente[]
   camiones: Camion[]
+  alertasFlota?: AlertaFlota[]
   onViewViaje: (v: Viaje) => void
   onNewViaje: () => void
   onNavigateViajes: () => void
@@ -27,6 +30,7 @@ export function DashboardPage({
   viajes,
   clientes,
   camiones,
+  alertasFlota = [],
   onViewViaje,
   onNewViaje,
   onNavigateViajes,
@@ -36,9 +40,7 @@ export function DashboardPage({
     .reduce((acc, v) => acc + v.monto, 0)
 
   const enTransito = viajes.filter((v) => v.estado === 'EN_TRANSITO').length
-  const camionsSinChofer = camiones.filter((c) => c.activo && (!c.chofer || c.chofer === 'Sin asignar')).length
-  const camionesInactivos = camiones.filter((c) => !c.activo).length
-  const totalAlertas = (enTransito > 0 ? 1 : 0) + (camionsSinChofer > 0 ? 1 : 0) + (camionesInactivos > 0 ? 1 : 0)
+  const totalAlertas = (enTransito > 0 ? 1 : 0) + alertasFlota.length
   const entregados = viajes.filter((v) => v.estado === 'ENTREGADO').length
   const totalTons = viajes.reduce((acc, v) => acc + v.toneladas, 0)
 
@@ -165,22 +167,22 @@ export function DashboardPage({
                   desc="Monitoreá el estado desde la sección Viajes"
                 />
               )}
-              {camionsSinChofer > 0 && (
-                <AlertItem
-                  type="warn"
-                  icon="person_off"
-                  title={`${camionsSinChofer} camión${camionsSinChofer > 1 ? 'es' : ''} sin chofer`}
-                  desc="Asigná un chofer desde la sección Camiones"
-                />
-              )}
-              {camionesInactivos > 0 && (
-                <AlertItem
-                  type="warn"
-                  icon="directions_car"
-                  title={`${camionesInactivos} unidad${camionesInactivos > 1 ? 'es' : ''} inactiva${camionesInactivos > 1 ? 's' : ''}`}
-                  desc="Revisá el estado de la flota en la sección Camiones"
-                />
-              )}
+              {alertasFlota.map((a) => {
+                const st = estadoVencimiento(a.venc)
+                const isVencido = st.kind === 'vencido'
+                const label = isVencido
+                  ? `Vencido hace ${Math.abs(st.dias)}d`
+                  : `Vence en ${st.dias}d`
+                return (
+                  <AlertItem
+                    key={a.id}
+                    type="warn"
+                    icon={a.icon}
+                    title={`${a.label}${a.sub ? ` · ${a.sub}` : ''}`}
+                    desc={`${label} · ${formatDate(a.venc)}`}
+                  />
+                )
+              })}
             </div>
           </div>
         </div>

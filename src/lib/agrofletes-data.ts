@@ -910,6 +910,18 @@ export const TIRE_MODELS_BY_ROLE: Record<string, string[]> = {
   trailer: ['KMAX T', 'X Multi T', 'ST01',  'R168',  'FT492',  'SF99'],
 }
 
+// ── AlertaFlota ──────────────────────────────────────────────────────────────
+
+export interface AlertaFlota {
+  id: string
+  label: string
+  icon: string
+  venc: string
+  sub?: string
+  kind: 'vencido' | 'por_vencer'
+  dias: number
+}
+
 // ── Truck detail utilities ────────────────────────────────────────────────────
 
 export function estadoVencimiento(iso: string): { kind: 'vigente' | 'por_vencer' | 'vencido'; dias: number } {

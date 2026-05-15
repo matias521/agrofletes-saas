@@ -23,6 +23,9 @@ import {
   docVehiculoFromDB,
   tallerVisitaFromDB,
   neumaticoFromDB,
+  estadoVencimiento,
+  TIPOS_DOC_VEHICULO,
+  AlertaFlota,
 } from '@/lib/agrofletes-data'
 import { createClient } from '@/lib/supabase'
 
@@ -46,6 +49,7 @@ function AppContent() {
   const [openCamionesModal, setOpenCamionesModal] = useState(false)
   const [plan, setPlan] = useState<'Free' | 'Pro'>('Free')
   const [loading, setLoading] = useState(true)
+  const [alertasFlota, setAlertasFlota] = useState<AlertaFlota[]>([])
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
 
   useEffect(() => {
@@ -84,6 +88,35 @@ function AppContent() {
         ...c,
         viajes: mappedViajes.filter(v => v.camionId === c.id).length,
       }))
+
+      // Load fleet alerts (docs + chofer docs)
+      const [{ data: allDocs }, { data: allChoferes }] = await Promise.all([
+        supabase.from('camion_docs').select('*'),
+        supabase.from('camion_choferes').select('*'),
+      ])
+      const needs = (iso: string) => { if (!iso) return false; const st = estadoVencimiento(iso); return st.kind === 'vencido' || st.kind === 'por_vencer' }
+      const alertas: AlertaFlota[] = []
+      for (const d of (allDocs ?? [])) {
+        if (!needs(d.venc)) continue
+        const tipo = TIPOS_DOC_VEHICULO.find((t) => t.id === d.tipo_id)
+        const st = estadoVencimiento(d.venc)
+        alertas.push({ id: d.id, label: tipo?.label ?? d.tipo_id, icon: tipo?.icon ?? 'description', venc: d.venc, sub: d.numero || undefined, kind: st.kind as 'vencido' | 'por_vencer', dias: st.dias })
+      }
+      for (const c of (allChoferes ?? [])) {
+        const checks = [
+          { id: `${c.id}-lic`,  label: 'Licencia de conducir', icon: 'local_police',       venc: c.lic_venc },
+          { id: `${c.id}-psic`, label: 'Psicofísico',           icon: 'medical_services',  venc: c.psicofisico_venc },
+          { id: `${c.id}-lib`,  label: 'Libreta de sanidad',    icon: 'health_and_safety', venc: c.libreta_sanidad_venc },
+        ]
+        for (const ch of checks) {
+          if (!needs(ch.venc)) continue
+          const st = estadoVencimiento(ch.venc)
+          alertas.push({ id: ch.id, label: ch.label, icon: ch.icon, venc: ch.venc, sub: c.nombre, kind: st.kind as 'vencido' | 'por_vencer', dias: st.dias })
+        }
+      }
+      // Sort: vencidos first, then by proximity
+      alertas.sort((a, b) => a.dias - b.dias)
+      setAlertasFlota(alertas)
 
       setViajes(mappedViajes)
       setClientes(clientesWithStats)
@@ -470,6 +503,7 @@ function AppContent() {
             viajes={viajes}
             clientes={clientes}
             camiones={camiones}
+            alertasFlota={alertasFlota}
             onViewViaje={handleViewViaje}
             onNewViaje={() => setWizardOpen(true)}
             onNavigateViajes={() => handleNavigate('viajes')}
