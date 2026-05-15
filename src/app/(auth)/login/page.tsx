@@ -40,7 +40,7 @@ export default function LoginPage() {
       gap: 24,
     }}>
       {/* Brand mark */}
-      <div style={{ marginBottom: 8 }}>
+      <div style={{ marginBottom: 8, textAlign: 'center' }}>
         <img src="/logo.svg" alt="AgroFletes" style={{ height: 56, width: 'auto' }} />
       </div>
 
