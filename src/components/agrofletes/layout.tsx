@@ -1,5 +1,6 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { Icon } from './icon'
 import { COMPANY } from '@/lib/agrofletes-data'
@@ -208,7 +209,10 @@ export function Sidebar({ active, onNavigate, plan, onLogout, user, spotlightNav
         <button onClick={() => setFeedbackOpen(true)}>Enviar sugerencias</button>
       </div>
 
-      {feedbackOpen && <FeedbackModal onClose={() => setFeedbackOpen(false)} />}
+      {feedbackOpen && typeof document !== 'undefined' && createPortal(
+        <FeedbackModal onClose={() => setFeedbackOpen(false)} />,
+        document.body
+      )}
 
       {/* User tile */}
       <div
