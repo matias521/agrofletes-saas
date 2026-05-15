@@ -36,7 +36,7 @@ export function DashboardPage({
     .reduce((acc, v) => acc + v.monto, 0)
 
   const enTransito = viajes.filter((v) => v.estado === 'EN_TRANSITO').length
-  const camionsSinChofer = camiones.filter((c) => c.activo && !c.chofer).length
+  const camionsSinChofer = camiones.filter((c) => c.activo && (!c.chofer || c.chofer === 'Sin asignar')).length
   const camionesInactivos = camiones.filter((c) => !c.activo).length
   const totalAlertas = (enTransito > 0 ? 1 : 0) + (camionsSinChofer > 0 ? 1 : 0) + (camionesInactivos > 0 ? 1 : 0)
   const entregados = viajes.filter((v) => v.estado === 'ENTREGADO').length
