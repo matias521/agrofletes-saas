@@ -1124,29 +1124,12 @@ export function ReportesPage() {
                 letterSpacing: -0.2,
               }}
             >
-              Reportes avanzados con Plan Pro
+              Próximamente
             </div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5 }}>
-              Accedé a análisis de rentabilidad por cliente, eficiencia de flota, comparativas mensuales,
-              y exportación a Excel/PDF ilimitada.
+              Estamos trabajando en reportes avanzados de rentabilidad, eficiencia de flota y exportaciones.
             </div>
           </div>
-          <button
-            style={{
-              background: 'var(--af-lime)',
-              color: '#0F1B0A',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: 14,
-              padding: '12px 24px',
-              borderRadius: 10,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-            }}
-          >
-            Mejorar a Pro
-          </button>
         </div>
 
         {/* Preview grid */}

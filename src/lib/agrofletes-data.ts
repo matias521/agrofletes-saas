@@ -808,7 +808,7 @@ export interface NeumaticooDB {
   seg: string | null
   axle: string | null
   side: string | null
-  inner: boolean | null
+  is_inner: boolean | null
   role: string | null
 }
 
@@ -1018,7 +1018,7 @@ export function neumaticoFromDB(row: NeumaticooDB): Neumatico {
     seg: (row.seg as 'tractor' | 'trailer') ?? 'tractor',
     axle: row.axle ?? '',
     side: (row.side as 'I' | 'D') ?? 'I',
-    inner: row.inner,
+    inner: row.is_inner,
     role: (row.role as 'steer' | 'drive' | 'trailer') ?? 'drive',
   }
 }

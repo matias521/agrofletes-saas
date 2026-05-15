@@ -85,8 +85,30 @@ function CamDashboardTab({
   const ultimoViaje = viajes[0] ?? null
   const km = camion.kmAcumulados ?? 0
 
-  const docsAlerta = docs.filter((d) => estadoVencimiento(d.venc).kind !== 'vigente')
   const ultimoTaller = taller[0] ?? null
+
+  // Unified 15-day alert list: vehicle docs + chofer docs
+  const alertas = useMemo(() => {
+    type AlertaItem = { id: string; label: string; icon: string; venc: string; sub?: string }
+    const needs = (iso: string) => { if (!iso) return false; const st = estadoVencimiento(iso); return st.kind === 'vencido' || st.dias <= 15 }
+    const items: AlertaItem[] = []
+    for (const d of docs) {
+      if (!needs(d.venc)) continue
+      const tipo = TIPOS_DOC_VEHICULO.find((t) => t.id === d.tipoId)
+      items.push({ id: d.id, label: tipo?.label ?? d.tipoId, icon: tipo?.icon ?? 'description', venc: d.venc, sub: d.numero || undefined })
+    }
+    if (chofer) {
+      const checks: { id: string; label: string; icon: string; venc: string }[] = [
+        { id: 'lic',  label: 'Licencia de conducir', icon: 'local_police',      venc: chofer.licencia.venc },
+        { id: 'psic', label: 'Psicofísico',           icon: 'medical_services', venc: chofer.psicofisico.venc },
+        { id: 'lib',  label: 'Libreta de sanidad',    icon: 'health_and_safety', venc: chofer.libretaSanidad.venc },
+      ]
+      for (const c of checks) {
+        if (needs(c.venc)) items.push({ ...c, sub: chofer.nombre })
+      }
+    }
+    return items
+  }, [docs, chofer])
 
   const tireSummary = useMemo(() => {
     if (tires.length === 0) return null
@@ -111,29 +133,28 @@ function CamDashboardTab({
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16, marginBottom: 16 }}>
-        <Card title={`Alertas y vencimientos${docsAlerta.length > 0 ? ` · ${docsAlerta.length} requieren atención` : ''}`}>
-          {docsAlerta.length === 0 ? (
+        <Card title={`Alertas y vencimientos${alertas.length > 0 ? ` · ${alertas.length} requieren atención` : ''}`}>
+          {alertas.length === 0 ? (
             <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-tertiary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <Icon name="task_alt" size={32} style={{ color: 'var(--af-green)' }} />
               <span style={{ fontSize: 13 }}>Todos los documentos están vigentes.</span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {docsAlerta.map((d) => {
-                const tipo = TIPOS_DOC_VEHICULO.find((t) => t.id === d.tipoId)
-                return (
-                  <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--border-soft)', background: 'var(--surface-muted)', borderRadius: 8 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 8, background: '#fff', color: 'var(--text-secondary)', display: 'grid', placeItems: 'center', flexShrink: 0, border: '1px solid var(--border-soft)' }}>
-                      <Icon name={tipo?.icon ?? 'description'} size={18} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{tipo?.label ?? d.tipoId}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{d.numero} · vence el {formatDate(d.venc)}</div>
-                    </div>
-                    <VencBadge iso={d.venc} />
+              {alertas.map((a) => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, border: '1px solid var(--border-soft)', background: 'var(--surface-muted)', borderRadius: 8 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 8, background: '#fff', color: 'var(--text-secondary)', display: 'grid', placeItems: 'center', flexShrink: 0, border: '1px solid var(--border-soft)' }}>
+                    <Icon name={a.icon} size={18} />
                   </div>
-                )
-              })}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{a.label}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+                      {a.sub ? `${a.sub} · ` : ''}vence el {formatDate(a.venc)}
+                    </div>
+                  </div>
+                  <VencBadge iso={a.venc} />
+                </div>
+              ))}
             </div>
           )}
         </Card>
@@ -244,7 +265,7 @@ function CamDashboardTab({
 
 // ── VIAJES TAB ────────────────────────────────────────────────────────────────
 
-function CamViajesTab({ viajes, clientes }: { viajes: Viaje[]; clientes: Cliente[] }) {
+function CamViajesTab({ viajes, clientes, onViewViaje }: { viajes: Viaje[]; clientes: Cliente[]; onViewViaje: (v: Viaje) => void }) {
   const clienteById = (id: string) => clientes.find((c) => c.id === id)
   return (
     <Card title={`Historial de viajes · ${viajes.length} viaje${viajes.length === 1 ? '' : 's'}`} bodyStyle={{ padding: 0 }}>
@@ -274,7 +295,7 @@ function CamViajesTab({ viajes, clientes }: { viajes: Viaje[]; clientes: Cliente
             </tr>
           ) : (
             viajes.map((v) => (
-              <tr key={v.id}>
+              <tr key={v.id} style={{ cursor: 'pointer' }} onClick={() => onViewViaje(v)}>
                 <td className="muted">{formatDate(v.fecha)}</td>
                 <td>{clienteById(v.clienteId)?.alias ?? '—'}</td>
                 <td className="muted">{v.origen} → {v.destino}</td>
@@ -300,6 +321,7 @@ interface NuevoDocData {
   entidad: string
   emision: string
   venc: string
+  file?: File | null
 }
 
 function SubirDocumentoModal({ onClose, onSave }: { onClose: () => void; onSave: (data: NuevoDocData) => Promise<void> }) {
@@ -315,10 +337,12 @@ function SubirDocumentoModal({ onClose, onSave }: { onClose: () => void; onSave:
   const [autoDetected, setAutoDetected] = useState<Set<string>>(new Set())
   const [parseError, setParseError] = useState('')
   const [dragging, setDragging] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   const tipo = TIPOS_DOC_VEHICULO.find((t) => t.id === tipoId)!
 
   async function handlePdf(file: File) {
+    setSelectedFile(file)
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       setParseError('El archivo debe ser un PDF.')
       return
@@ -349,7 +373,7 @@ function SubirDocumentoModal({ onClose, onSave }: { onClose: () => void; onSave:
   async function handleSubmit() {
     if (!venc) return
     setSaving(true)
-    await onSave({ tipoId, numero, entidad, emision, venc })
+    await onSave({ tipoId, numero, entidad, emision, venc, file: selectedFile })
     onClose()
   }
 
@@ -509,9 +533,22 @@ function SubirDocumentoModal({ onClose, onSave }: { onClose: () => void; onSave:
   )
 }
 
-function CamDocumentosTab({ docs, onAddDoc }: { docs: DocVehiculo[]; onAddDoc: (data: NuevoDocData) => Promise<void> }) {
+function CamDocumentosTab({ docs, onAddDoc, onDeleteDoc }: {
+  docs: DocVehiculo[]
+  onAddDoc: (data: NuevoDocData) => Promise<void>
+  onDeleteDoc: (docId: string) => Promise<void>
+}) {
   const [modalOpen, setModalOpen] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const tipoMap = Object.fromEntries(TIPOS_DOC_VEHICULO.map((t) => [t.id, t]))
+
+  async function handleDelete(docId: string) {
+    if (!confirm('¿Eliminar este documento?')) return
+    setDeleting(docId)
+    await onDeleteDoc(docId)
+    setDeleting(null)
+  }
+
   return (
     <>
     {modalOpen && <SubirDocumentoModal onClose={() => setModalOpen(false)} onSave={onAddDoc} />}
@@ -536,7 +573,7 @@ function CamDocumentosTab({ docs, onAddDoc }: { docs: DocVehiculo[]; onAddDoc: (
               <th>Emisión</th>
               <th>Vencimiento</th>
               <th>Estado</th>
-              <th style={{ width: 80 }}></th>
+              <th style={{ width: 100 }}></th>
             </tr>
           </thead>
           <tbody>
@@ -554,13 +591,35 @@ function CamDocumentosTab({ docs, onAddDoc }: { docs: DocVehiculo[]; onAddDoc: (
                   </td>
                   <td className="muted" style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>{d.numero}</td>
                   <td className="muted">{d.entidad}</td>
-                  <td className="muted">{formatDate(d.emision)}</td>
+                  <td className="muted">{d.emision ? formatDate(d.emision) : '—'}</td>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600 }}>{formatDate(d.venc)}</td>
                   <td><VencBadge iso={d.venc} /></td>
                   <td>
                     <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                      <button className="btn btn-ghost btn-icon btn-sm" title="Ver archivo"><Icon name="visibility" size={16} /></button>
-                      <button className="btn btn-ghost btn-icon btn-sm" title="Descargar"><Icon name="download" size={16} /></button>
+                      {d.archivo ? (
+                        <>
+                          <a href={d.archivo} target="_blank" rel="noopener noreferrer">
+                            <button className="btn btn-ghost btn-icon btn-sm" title="Ver archivo"><Icon name="visibility" size={16} /></button>
+                          </a>
+                          <a href={d.archivo} download>
+                            <button className="btn btn-ghost btn-icon btn-sm" title="Descargar"><Icon name="download" size={16} /></button>
+                          </a>
+                        </>
+                      ) : (
+                        <>
+                          <button className="btn btn-ghost btn-icon btn-sm" title="Sin archivo" disabled style={{ opacity: 0.35 }}><Icon name="visibility" size={16} /></button>
+                          <button className="btn btn-ghost btn-icon btn-sm" title="Sin archivo" disabled style={{ opacity: 0.35 }}><Icon name="download" size={16} /></button>
+                        </>
+                      )}
+                      <button
+                        className="btn btn-ghost btn-icon btn-sm"
+                        title="Eliminar"
+                        disabled={deleting === d.id}
+                        onClick={() => handleDelete(d.id)}
+                        style={{ color: 'var(--st-cancelado-fg)' }}
+                      >
+                        <Icon name="delete" size={16} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1644,15 +1703,17 @@ interface CamionDetailPageProps {
   detailData: CamionDetailData
   loading?: boolean
   onBack: () => void
+  onViewViaje: (v: Viaje) => void
   onSetTires: (tires: Neumatico[]) => void
   onAddDoc: (camionId: string, data: NuevoDocData) => Promise<void>
+  onDeleteDoc: (docId: string) => Promise<void>
   onAddTaller: (camionId: string, data: NuevaTallerVisitaData) => Promise<void>
   onSaveChofer: (camionId: string, data: NuevoChoferData) => Promise<void>
 }
 
 export type { NuevoDocData }
 
-export function CamionDetailPage({ camion, viajes, clientes, detailData, loading = false, onBack, onSetTires, onAddDoc, onAddTaller, onSaveChofer }: CamionDetailPageProps) {
+export function CamionDetailPage({ camion, viajes, clientes, detailData, loading = false, onBack, onViewViaje, onSetTires, onAddDoc, onDeleteDoc, onAddTaller, onSaveChofer }: CamionDetailPageProps) {
   const [tab, setTab] = useState('dashboard')
   const { chofer, docs, taller, tires } = detailData
 
@@ -1715,8 +1776,8 @@ export function CamionDetailPage({ camion, viajes, clientes, detailData, loading
 
             <div style={{ marginTop: 16 }}>
               {tab === 'dashboard'  && <CamDashboardTab camion={camion} viajes={camionViajes} chofer={chofer} docs={docs} taller={taller} tires={tires} />}
-              {tab === 'viajes'     && <CamViajesTab viajes={camionViajes} clientes={clientes} />}
-              {tab === 'documentos' && <CamDocumentosTab docs={docs} onAddDoc={(data) => onAddDoc(camion.id, data)} />}
+              {tab === 'viajes'     && <CamViajesTab viajes={camionViajes} clientes={clientes} onViewViaje={onViewViaje} />}
+              {tab === 'documentos' && <CamDocumentosTab docs={docs} onAddDoc={(data) => onAddDoc(camion.id, data)} onDeleteDoc={onDeleteDoc} />}
               {tab === 'chofer'     && <CamChoferTab chofer={chofer} camion={camion} onSaveChofer={(data) => onSaveChofer(camion.id, data)} />}
               {tab === 'taller'     && <CamTallerTab taller={taller} camion={camion} onAddTaller={(data) => onAddTaller(camion.id, data)} />}
               {tab === 'neumaticos' && <CamNeumaticosTab camion={camion} tires={tires} onSetTires={onSetTires} />}

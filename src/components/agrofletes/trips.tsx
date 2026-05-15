@@ -21,6 +21,8 @@ import {
   Camion,
   TIPOS_CARGA,
   TIPOS_CAMION,
+  TIPOS_DOC,
+  TipoDoc,
   TIMELINE_V1023,
   formatMoney,
   formatDate,
@@ -302,7 +304,7 @@ function DTRow({ viaje: v, clientes, onView, onMenu }: DTRowProps) {
       <td className="muted">{v.destino}</td>
       <td style={{ textTransform: 'capitalize' }}>{v.tipoCargaLabel || v.tipoCargaId}</td>
       <td>
-        <span className="num">{formatTon(v.toneladas)}</span>
+        <span className="num">{v.tipoCargaId === 'cerdos' ? `${v.toneladas} cab.` : formatTon(v.toneladas)}</span>
       </td>
       <td>
         <span className="money">{formatMoney(v.monto)}</span>
@@ -333,10 +335,116 @@ interface TripDetailPageProps {
   camiones: Camion[]
   onBack: () => void
   onUpdateEstado: (id: string, estado: EstadoKey) => void
+  onAddDoc: (viajeId: string, tipoId: TipoDoc, nombre: string, file: File | null) => Promise<void>
 }
 
-export function TripDetailPage({ viaje, clientes, camiones, onBack, onUpdateEstado }: TripDetailPageProps) {
+// ── Doc types ─────────────────────────────────────────────────────────────────
+
+interface ViajeDoc { tipo: TipoDoc; nombre: string; url: string }
+
+function parseViajeDoc(s: string): ViajeDoc {
+  try { return JSON.parse(s) } catch { return { tipo: 'otro', nombre: s, url: '' } }
+}
+
+// ── ViajeDocModal ──────────────────────────────────────────────────────────────
+
+function ViajeDocModal({ viajeId, onClose, onSave }: {
+  viajeId: string
+  onClose: () => void
+  onSave: (viajeId: string, tipoId: TipoDoc, nombre: string, file: File | null) => Promise<void>
+}) {
+  const tipoKeys = Object.keys(TIPOS_DOC) as TipoDoc[]
+  const [tipoId, setTipoId] = useState<TipoDoc>('remito')
+  const [nombre, setNombre] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+  const [saving, setSaving] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleSubmit() {
+    if (!nombre.trim() && !file) return
+    setSaving(true)
+    await onSave(viajeId, tipoId, nombre.trim() || (file?.name ?? ''), file)
+    onClose()
+  }
+
+  const tipoInfo = TIPOS_DOC[tipoId]
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: 'var(--surface-card)', borderRadius: 16, width: 480, maxWidth: '100%', boxShadow: 'var(--shadow-xl)', display: 'flex', flexDirection: 'column' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div style={{ padding: '22px 24px 18px', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
+            Agregar documento
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}>
+            <Icon name="close" size={18} />
+          </button>
+        </div>
+
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Field label="Tipo de documento *">
+            <SelectInput
+              value={tipoId}
+              onChange={e => setTipoId(e.target.value as TipoDoc)}
+              options={tipoKeys.map(k => ({ value: k, label: TIPOS_DOC[k].label }))}
+            />
+          </Field>
+
+          <Field label="Nombre / número">
+            <Input
+              placeholder={`Ej: ${tipoId === 'carta_porte' ? 'CP 00123456' : tipoId === 'factura' ? 'FAC-A 00001-00000123' : tipoId === 'remito' ? 'REM 00001' : 'Nombre del documento'}`}
+              value={nombre}
+              onChange={e => setNombre(e.target.value)}
+              autoFocus
+            />
+          </Field>
+
+          <Field label="Archivo (opcional)">
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              style={{ display: 'none' }}
+              onChange={e => setFile(e.target.files?.[0] ?? null)}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', border: `1.5px dashed ${file ? 'var(--af-green)' : 'var(--border-soft)'}`, borderRadius: 8, background: file ? 'var(--af-green-bg)' : 'var(--surface-muted)', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+            >
+              <Icon name={file ? 'check_circle' : 'upload_file'} size={18} style={{ color: file ? 'var(--af-green)' : 'var(--text-tertiary)', flexShrink: 0 }} />
+              <span style={{ fontSize: 13, color: file ? 'var(--af-green-press)' : 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {file ? file.name : 'Seleccionar archivo PDF o imagen...'}
+              </span>
+            </button>
+          </Field>
+        </div>
+
+        <div style={{ padding: '14px 24px 20px', borderTop: '1px solid var(--border-soft)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancelar</button>
+          <button
+            className="btn btn-primary"
+            onClick={handleSubmit}
+            disabled={saving || (!nombre.trim() && !file)}
+          >
+            <Icon name={saving ? 'hourglass_top' : tipoInfo.icon} size={15} />
+            {saving ? 'Guardando...' : 'Agregar documento'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function TripDetailPage({ viaje, clientes, camiones, onBack, onUpdateEstado, onAddDoc }: TripDetailPageProps) {
   const { showToast } = useToast()
+  const [docModalOpen, setDocModalOpen] = useState(false)
   const timeline = TIMELINE_V1023.slice(0, 0) // empty for real trips; keep for demo
   const statusKeys = Object.keys(ESTADOS) as EstadoKey[]
 
@@ -406,7 +514,7 @@ export function TripDetailPage({ viaje, clientes, camiones, onBack, onUpdateEsta
                   <DataRow label="Cliente" value={cliente?.razon ?? cliente?.alias ?? '—'} />
                   <DataRow label="Carga" value={<span style={{ textTransform: 'capitalize' }}>{viaje.tipoCargaLabel || viaje.tipoCargaId || '—'}</span>} />
                   <DataRow label="Origen" value={viaje.origen} />
-                  <DataRow label="Toneladas" value={formatTon(viaje.toneladas)} />
+                  <DataRow label={viaje.tipoCargaId === 'cerdos' ? 'Cabezas' : 'Toneladas'} value={viaje.tipoCargaId === 'cerdos' ? `${viaje.toneladas} cab.` : formatTon(viaje.toneladas)} />
                   <DataRow label="Destino" value={viaje.destino} />
                   <DataRow label="Kilómetros" value={formatKm(viaje.km)} />
                   <DataRow label="Camión" value={camion?.patente ?? '—'} />
@@ -436,10 +544,23 @@ export function TripDetailPage({ viaje, clientes, camiones, onBack, onUpdateEsta
             </div>
 
             {/* Documents */}
+            {docModalOpen && (
+              <ViajeDocModal
+                viajeId={viaje.id}
+                onClose={() => setDocModalOpen(false)}
+                onSave={async (viajeId, tipoId, nombre, file) => {
+                  await onAddDoc(viajeId, tipoId, nombre, file)
+                  setDocModalOpen(false)
+                }}
+              />
+            )}
             <div className="card">
               <div className="card-header">
-                <h3>Documentación</h3>
-                <Button variant="secondary" size="sm" icon="upload">
+                <div>
+                  <h3>Documentación del viaje</h3>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>Remitos, facturas, cartas de porte, seguros</div>
+                </div>
+                <Button variant="secondary" size="sm" icon="upload" onClick={() => setDocModalOpen(true)}>
                   Subir archivo
                 </Button>
               </div>
@@ -449,17 +570,26 @@ export function TripDetailPage({ viaje, clientes, camiones, onBack, onUpdateEsta
                     Sin documentos adjuntos.
                   </div>
                 ) : (
-                  viaje.docs.map((doc, i) => (
-                    <div key={i} className="doc-tile">
-                      <div className="doc-icon">
-                        <Icon name="description" size={20} />
+                  viaje.docs.map((raw, i) => {
+                    const doc = parseViajeDoc(raw)
+                    const tipoInfo = TIPOS_DOC[doc.tipo] ?? { label: doc.tipo, icon: 'description' }
+                    return (
+                      <div key={i} className="doc-tile">
+                        <div className="doc-icon">
+                          <Icon name={tipoInfo.icon} size={20} />
+                        </div>
+                        <div className="doc-meta">
+                          <div className="doc-name">{doc.nombre || tipoInfo.label}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{tipoInfo.label}</div>
+                        </div>
+                        {doc.url && (
+                          <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                            <Button variant="ghost" size="sm" icon="download" />
+                          </a>
+                        )}
                       </div>
-                      <div className="doc-meta">
-                        <div className="doc-name">{doc}</div>
-                      </div>
-                      <Button variant="ghost" size="sm" icon="download" />
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </div>
@@ -610,12 +740,13 @@ export function TripWizard({ open, clientes, camiones, onClose, onSave }: TripWi
   function handleSave() {
     const cargaKey = data.tipoCargaId as keyof typeof TIPOS_CARGA
     const isMaquinaria = data.tipoCargaId === 'maquinaria'
+    const isCerdos = data.tipoCargaId === 'cerdos'
     const cargaLabel = isMaquinaria
       ? data.tipoCargaCustomLabel || 'Maquinaria'
       : (TIPOS_CARGA[cargaKey]?.label ?? data.tipoCargaId)
     const tons = isMaquinaria ? 0 : (parseFloat(data.toneladas) || 0)
     const tarifa = parseFloat(data.tarifa) || 0
-    const total = isMaquinaria ? tarifa : Math.round(tons * tarifa)
+    const total = (isMaquinaria || isCerdos) ? tarifa : Math.round(tons * tarifa)
 
     onSave({
       clienteId: data.clienteId,
@@ -749,6 +880,7 @@ interface Step3Props extends StepProps {
 function WizardStep1({ data, set, clientes }: Step1Props) {
   const cargaKeys = Object.keys(TIPOS_CARGA) as Array<keyof typeof TIPOS_CARGA>
   const isMaquinaria = data.tipoCargaId === 'maquinaria'
+  const isCerdos = data.tipoCargaId === 'cerdos'
   const clientesActivos = clientes.filter(c => c.activo)
 
   const clienteOptions = [
@@ -807,12 +939,12 @@ function WizardStep1({ data, set, clientes }: Step1Props) {
           />
         </Field>
       ) : (
-        <Field key="toneladas" label="Toneladas *">
+        <Field key="toneladas" label={isCerdos ? 'Cabezas (N° de animales) *' : 'Toneladas *'}>
           <Input
             type="number"
             min="0"
-            step="0.1"
-            placeholder="Ej: 26.5"
+            step={isCerdos ? '1' : '0.1'}
+            placeholder={isCerdos ? 'Ej: 120' : 'Ej: 26.5'}
             value={data.toneladas ?? ''}
             onChange={(e) => set('toneladas', e.target.value)}
           />
@@ -918,11 +1050,12 @@ function WizardStep2({ data, set, camiones }: Step2Props) {
 
 function WizardStep3({ data, set, clientes, camiones }: Step3Props) {
   const isMaquinaria = data.tipoCargaId === 'maquinaria'
+  const isCerdos = data.tipoCargaId === 'cerdos'
   const cliente = clientes.find((c) => c.id === data.clienteId)
   const camion = camiones.find((k) => k.id === data.camionId)
   const tons = parseFloat(data.toneladas) || 0
   const tarifa = parseFloat(data.tarifa || '0') || 0
-  const total = isMaquinaria ? tarifa : Math.round(tons * tarifa)
+  const total = (isMaquinaria || isCerdos) ? tarifa : Math.round(tons * tarifa)
 
   const clienteLabel = data.clienteId === '__new__'
     ? data.nuevoClienteRazon || '(cliente nuevo)'
@@ -946,7 +1079,9 @@ function WizardStep3({ data, set, clientes, camiones }: Step3Props) {
             <DataRow label="Origen" value={data.origen || '—'} />
             {isMaquinaria
               ? <DataRow label="Descripción" value={data.tipoCargaCustomLabel || '—'} />
-              : <DataRow label="Toneladas" value={formatTon(tons)} />
+              : isCerdos
+                ? <DataRow label="Cabezas" value={tons ? `${tons} cab.` : '—'} />
+                : <DataRow label="Toneladas" value={formatTon(tons)} />
             }
             <DataRow label="Destino" value={data.destino || '—'} />
             <DataRow label="Km" value={data.km ? `${data.km} km` : '—'} />
@@ -957,11 +1092,11 @@ function WizardStep3({ data, set, clientes, camiones }: Step3Props) {
       </div>
 
       {/* Pricing */}
-      <Field label={isMaquinaria ? 'Monto total (ARS) *' : 'Tarifa por tonelada (ARS) *'}>
+      <Field label={(isMaquinaria || isCerdos) ? 'Precio total (ARS) *' : 'Tarifa por tonelada (ARS) *'}>
         <Input
           type="number"
           min="0"
-          placeholder={isMaquinaria ? 'Ej: 350000' : 'Ej: 4200'}
+          placeholder={(isMaquinaria || isCerdos) ? 'Ej: 350000' : 'Ej: 4200'}
           value={data.tarifa}
           onChange={(e) => set('tarifa', e.target.value)}
         />
@@ -978,7 +1113,7 @@ function WizardStep3({ data, set, clientes, camiones }: Step3Props) {
           }}
         >
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-            Total estimado
+            {(isMaquinaria || isCerdos) ? 'Precio final' : 'Total estimado'}
           </div>
           <div
             style={{
@@ -991,7 +1126,7 @@ function WizardStep3({ data, set, clientes, camiones }: Step3Props) {
           >
             {formatMoney(total)}
           </div>
-          {!isMaquinaria && (
+          {!isMaquinaria && !isCerdos && (
             <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>
               {formatTon(tons)} × {formatMoney(tarifa)}/tn
             </div>

@@ -5,6 +5,7 @@ import { ToastProvider, useToast } from '@/components/agrofletes/ui'
 import { Sidebar, Topbar } from '@/components/agrofletes/layout'
 import { DashboardPage } from '@/components/agrofletes/dashboard'
 import { TripsListPage, TripDetailPage, TripWizard, WizardData } from '@/components/agrofletes/trips'
+import type { TipoDoc } from '@/lib/agrofletes-data'
 import { ClientesPage, CamionesPage, ReportesPage, ConfigPage, NuevaUnidadData } from '@/components/agrofletes/secondary'
 import { CamionDetailPage, CamionDetailData, NuevoDocData, NuevaTallerVisitaData, NuevoChoferData } from '@/components/agrofletes/camion-detail'
 import { OnboardingFlow } from '@/components/agrofletes/onboarding'
@@ -106,6 +107,7 @@ function AppContent() {
   const handleNavigate = useCallback((page: PageKey) => {
     setActivePage(page)
     setOpenViaje(null)
+    setOpenCamion(null)
   }, [])
 
   const handleOnboardingNavigate = useCallback((page: string) => {
@@ -145,6 +147,27 @@ function AppContent() {
     setOpenViaje((prev) => (prev?.id === viajeId ? { ...prev, estado: newStatus } : prev))
     showToast(`Viaje actualizado a "${ESTADOS[newStatus].label}".`)
   }, [showToast])
+
+  const handleAddViajeDoc = useCallback(async (viajeId: string, tipoId: TipoDoc, nombre: string, file: File | null) => {
+    const supabase = createClient()
+    let fileUrl = ''
+    if (file) {
+      const path = `${user!.id}/${viajeId}/${Date.now()}_${file.name}`
+      const { data: uploaded, error: uploadError } = await supabase.storage.from('viaje-docs').upload(path, file)
+      if (uploadError) { showToast(`Error al subir archivo: ${uploadError.message}`); return }
+      const { data: urlData } = supabase.storage.from('viaje-docs').getPublicUrl(uploaded.path)
+      fileUrl = urlData.publicUrl
+    }
+    const newDoc = JSON.stringify({ tipo: tipoId, nombre, url: fileUrl })
+    const viaje = viajes.find(v => v.id === viajeId)
+    if (!viaje) return
+    const updatedDocs = [...viaje.docs, newDoc]
+    const { error } = await supabase.from('viajes').update({ docs: updatedDocs }).eq('id', viajeId)
+    if (error) { showToast(`Error: ${error.message}`); return }
+    setViajes(prev => prev.map(v => v.id === viajeId ? { ...v, docs: updatedDocs } : v))
+    setOpenViaje(prev => prev?.id === viajeId ? { ...prev, docs: updatedDocs } : prev)
+    showToast('Documento agregado.')
+  }, [user, viajes, showToast])
 
   const handleDelete = useCallback(async (viajeId: string) => {
     const supabase = createClient()
@@ -273,7 +296,7 @@ function AppContent() {
           seg: t.seg,
           axle: t.axle,
           side: t.side,
-          inner: t.inner,
+          is_inner: t.inner,
           role: t.role,
         }))
       )
@@ -282,6 +305,14 @@ function AppContent() {
 
   const handleAddDoc = useCallback(async (camionId: string, data: NuevoDocData) => {
     const supabase = createClient()
+    let archivoUrl: string | null = null
+    if (data.file) {
+      const path = `${user!.id}/${camionId}/${Date.now()}_${data.file.name}`
+      const { data: uploaded, error: uploadError } = await supabase.storage.from('camion-docs').upload(path, data.file)
+      if (uploadError) { showToast(`Error al subir archivo: ${uploadError.message}`); return }
+      const { data: urlData } = supabase.storage.from('camion-docs').getPublicUrl(uploaded.path)
+      archivoUrl = urlData.publicUrl
+    }
     const { data: row, error } = await supabase.from('camion_docs').insert({
       user_id: user!.id,
       camion_id: camionId,
@@ -290,6 +321,7 @@ function AppContent() {
       entidad: data.entidad || null,
       emision: data.emision || null,
       venc: data.venc,
+      archivo: archivoUrl,
     }).select().single()
     if (row) {
       setCamionDetail((prev) => ({ ...prev, docs: [...prev.docs, docVehiculoFromDB(row)] }))
@@ -298,6 +330,14 @@ function AppContent() {
       showToast(`Error: ${error.message}`)
     }
   }, [user, showToast])
+
+  const handleDeleteDoc = useCallback(async (docId: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('camion_docs').delete().eq('id', docId)
+    if (error) { showToast(`Error: ${error.message}`); return }
+    setCamionDetail((prev) => ({ ...prev, docs: prev.docs.filter((d) => d.id !== docId) }))
+    showToast('Documento eliminado.')
+  }, [showToast])
 
   const handleSaveChofer = useCallback(async (camionId: string, data: NuevoChoferData) => {
     const supabase = createClient()
@@ -393,6 +433,7 @@ function AppContent() {
           camiones={camiones}
           onBack={() => setOpenViaje(null)}
           onUpdateEstado={handleChangeStatus}
+          onAddDoc={handleAddViajeDoc}
         />
       )
     }
@@ -406,8 +447,10 @@ function AppContent() {
           detailData={camionDetail}
           loading={camionDetailLoading}
           onBack={() => setOpenCamion(null)}
+          onViewViaje={(v) => { setOpenCamion(null); handleViewViaje(v) }}
           onSetTires={handleSetTires}
           onAddDoc={handleAddDoc}
+          onDeleteDoc={handleDeleteDoc}
           onAddTaller={handleAddTaller}
           onSaveChofer={handleSaveChofer}
         />
