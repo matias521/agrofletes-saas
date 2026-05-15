@@ -1,5 +1,6 @@
 'use client'
 import React from 'react'
+import Image from 'next/image'
 import { Icon } from './icon'
 import { COMPANY } from '@/lib/agrofletes-data'
 
@@ -45,13 +46,14 @@ export function Sidebar({ active, onNavigate, plan, onLogout, user }: SidebarPro
     <aside className="sidebar">
       {/* Brand */}
       <div className="brand">
-        <div className="brand-mark">
-          <span>A</span>
-        </div>
-        <div className="brand-text">
-          <span className="name">AgroFletes</span>
-          <span className="company">{COMPANY.nombre.split(' ')[0]}</span>
-        </div>
+        <Image
+          src="/logo.jpg"
+          alt="AgroFletes"
+          width={160}
+          height={54}
+          style={{ objectFit: 'contain', objectPosition: 'left center' }}
+          priority
+        />
       </div>
 
       {/* Main nav */}

@@ -3,18 +3,18 @@
 
 /* ── AgroFletes Design Tokens ─── */
 :root {
-  --af-green:        #58A400;
-  --af-green-hover:  #4A8C00;
-  --af-green-press:  #3D7400;
-  --af-lime:         #8BDF11;
-  --af-lime-soft:    #B8EE6A;
-  --af-green-bg:     #F2F9E6;
-  --af-green-bg-2:   #E5F3D1;
+  --af-green:        #0B9444;
+  --af-green-hover:  #097a37;
+  --af-green-press:  #076630;
+  --af-lime:         #8FC742;
+  --af-lime-soft:    #b5d97a;
+  --af-green-bg:     #eef8ec;
+  --af-green-bg-2:   #daf0d3;
 
-  --sidebar-bg:        #0F1B0A;
-  --sidebar-bg-soft:   #19260F;
-  --sidebar-text:      #D9E2D1;
-  --sidebar-text-mute: #7E8A75;
+  --sidebar-bg:        #0a2414;
+  --sidebar-bg-soft:   #122e1e;
+  --sidebar-text:      #d8e8d2;
+  --sidebar-text-mute: #7a8f76;
   --sidebar-active:    var(--af-lime);
 
   --surface-app:    #F7F8F5;
@@ -34,12 +34,12 @@
   --st-transito-bg:    #E3F0FB;
   --st-transito-fg:    #0B5DB0;
   --st-transito-dot:   #1976D2;
-  --st-entregado-bg:   #ECF8D6;
-  --st-entregado-fg:   #4A7A0C;
-  --st-entregado-dot:  #8BDF11;
-  --st-liquidado-bg:   #D9EDB8;
-  --st-liquidado-fg:   #2F5400;
-  --st-liquidado-dot:  #58A400;
+  --st-entregado-bg:   #eaf6de;
+  --st-entregado-fg:   #3a6e08;
+  --st-entregado-dot:  #8FC742;
+  --st-liquidado-bg:   #d3eddb;
+  --st-liquidado-fg:   #076630;
+  --st-liquidado-dot:  #0B9444;
   --st-cancelado-bg:   #FCE4E4;
   --st-cancelado-fg:   #B3261E;
   --st-cancelado-dot:  #D32F2F;
@@ -52,7 +52,7 @@
   --shadow-card:  0 1px 2px rgba(15, 27, 10, 0.04), 0 1px 3px rgba(15, 27, 10, 0.06);
   --shadow-pop:   0 10px 28px rgba(15, 27, 10, 0.12), 0 2px 6px rgba(15, 27, 10, 0.08);
   --shadow-modal: 0 24px 60px rgba(15, 27, 10, 0.25), 0 4px 12px rgba(15, 27, 10, 0.10);
-  --ring-focus:   0 0 0 3px rgba(88, 164, 0, 0.25);
+  --ring-focus:   0 0 0 3px rgba(11, 148, 68, 0.25);
 
   --radius-sm:   4px;
   --radius-md:   8px;
@@ -60,7 +60,7 @@
   --radius-xl:   16px;
   --radius-pill: 999px;
 
-  --font-display: var(--font-work-sans), sans-serif;
+  --font-display: var(--font-inter), sans-serif;
   --font-body:    var(--font-inter), sans-serif;
   --font-mono:    var(--font-jetbrains-mono), monospace;
 
@@ -211,7 +211,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .chip:hover { background: var(--surface-muted); }
 .chip.active { background: var(--af-green-bg); border-color: var(--af-green); color: var(--af-green-press); }
 .chip .count { background: var(--surface-muted); border-radius: var(--radius-pill); padding: 1px 7px; font-size: 11px; font-weight: 600; color: var(--text-secondary); }
-.chip.active .count { background: rgba(88,164,0,.18); color: var(--af-green-press); }
+.chip.active .count { background: rgba(11,148,68,.18); color: var(--af-green-press); }
 
 .divider { height: 1px; background: var(--border-soft); margin: 16px 0; }
 .hstack { display: flex; align-items: center; gap: 8px; }
@@ -241,7 +241,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .step .step-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
 .step .step-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
 .step-connector { flex: 1; height: 2px; background: var(--border-strong); margin: 0 8px; }
-.step.active .step-circle { background: var(--af-green); border-color: var(--af-green); color: #fff; box-shadow: 0 0 0 4px rgba(88,164,0,.15); }
+.step.active .step-circle { background: var(--af-green); border-color: var(--af-green); color: #fff; box-shadow: 0 0 0 4px rgba(11,148,68,.15); }
 .step.active .step-title { color: var(--text-primary); }
 .step.done .step-circle { background: var(--af-green); border-color: var(--af-green); color: #fff; }
 .step.done + .step-connector, .step.active + .step-connector { background: var(--af-green); }
@@ -249,7 +249,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .radio-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
 .radio-card { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 16px 12px; border: 1.5px solid var(--border-soft); border-radius: var(--radius-md); background: #fff; cursor: pointer; transition: all 150ms; gap: 8px; }
 .radio-card:hover { border-color: var(--text-tertiary); background: #FAFBF7; }
-.radio-card.selected { border-color: var(--af-green); background: var(--af-green-bg); box-shadow: 0 0 0 2px rgba(88,164,0,.12); }
+.radio-card.selected { border-color: var(--af-green); background: var(--af-green-bg); box-shadow: 0 0 0 2px rgba(11,148,68,.12); }
 .radio-card .ico { width: 44px; height: 44px; border-radius: 10px; background: var(--surface-muted); display: grid; place-items: center; color: var(--text-secondary); transition: all 150ms; }
 .radio-card.selected .ico { background: var(--af-green); color: #fff; }
 .radio-card .ico .material-symbols-rounded { font-size: 26px; }
@@ -303,13 +303,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .main { display: flex; flex-direction: column; min-width: 0; background: var(--surface-app); }
 
 .sidebar { background: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow: hidden; border-right: 1px solid #000; }
-.sidebar .brand { display: flex; align-items: center; gap: 10px; padding: 18px 18px 14px; border-bottom: 1px solid var(--sidebar-bg-soft); }
-.sidebar .brand-mark { width: 36px; height: 36px; border-radius: 9px; background: var(--af-green); display: grid; place-items: center; position: relative; overflow: hidden; }
-.sidebar .brand-mark::before { content: ""; position: absolute; inset: -6px -10px auto auto; width: 24px; height: 24px; background: var(--af-lime); border-radius: 50%; opacity: .9; }
-.sidebar .brand-mark span { position: relative; font-family: var(--font-display); font-weight: 800; font-size: 18px; color: #fff; line-height: 1; z-index: 1; }
-.sidebar .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
-.sidebar .brand-text .name { font-family: var(--font-display); font-weight: 700; font-size: 16px; color: #fff; letter-spacing: -0.2px; }
-.sidebar .brand-text .company { font-size: 11px; color: var(--sidebar-text-mute); margin-top: 1px; }
+.sidebar .brand { display: flex; align-items: center; padding: 14px 16px 12px; border-bottom: 1px solid var(--sidebar-bg-soft); background: #fff; }
+.sidebar .brand img { display: block; max-width: 100%; height: auto; }
 .nav { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
 .nav .nav-section-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--sidebar-text-mute); padding: 14px 10px 6px; }
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 7px; color: var(--sidebar-text); font-size: 14px; font-weight: 500; cursor: pointer; transition: background 150ms, color 150ms; position: relative; user-select: none; }
@@ -319,7 +314,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .nav-item .material-symbols-rounded { font-size: 20px; color: var(--sidebar-text-mute); }
 .nav-item:hover .material-symbols-rounded, .nav-item.active .material-symbols-rounded { color: var(--af-lime); }
 .nav-item .nav-badge { margin-left: auto; font-size: 10px; font-weight: 700; background: var(--af-green); color: #fff; border-radius: 999px; padding: 1px 7px; }
-.sidebar .plan-card { margin: 8px 12px 12px; padding: 12px; background: linear-gradient(135deg, rgba(88,164,0,.16), rgba(139,223,17,.08)); border: 1px solid rgba(139,223,17,.25); border-radius: 10px; }
+.sidebar .plan-card { margin: 8px 12px 12px; padding: 12px; background: linear-gradient(135deg, rgba(11,148,68,.16), rgba(143,199,66,.08)); border: 1px solid rgba(143,199,66,.25); border-radius: 10px; }
 .sidebar .plan-card .plan-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--af-lime); margin-bottom: 4px; }
 .sidebar .plan-card .plan-desc { font-size: 12px; color: var(--sidebar-text-mute); margin-bottom: 10px; line-height: 1.4; }
 .sidebar .plan-card button { width: 100%; background: var(--af-lime); color: #0F1B0A; border: none; font-weight: 700; font-size: 12px; padding: 7px; border-radius: 7px; cursor: pointer; transition: background 150ms; }
