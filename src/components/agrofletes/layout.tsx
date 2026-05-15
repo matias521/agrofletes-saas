@@ -32,19 +32,30 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState('')
   const [sent, setSent] = useState(false)
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
 
   async function handleSubmit() {
     if (!text.trim()) return
     setSending(true)
+    setSendError(null)
     try {
-      await fetch('/api/feedback', {
+      const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
       })
-    } finally {
+      const data = await res.json()
+      if (!res.ok || data.ok === false) {
+        setSendError(data.error ?? 'Error al enviar. Intentá de nuevo.')
+        setSending(false)
+        return
+      }
+    } catch {
+      setSendError('Error de red. Revisá tu conexión.')
       setSending(false)
+      return
     }
+    setSending(false)
     setSent(true)
     setTimeout(onClose, 1800)
   }
@@ -126,6 +137,11 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
               }}
               autoFocus
             />
+            {sendError && (
+              <div style={{ fontSize: 13, color: 'var(--st-cancelado-fg)', background: 'var(--st-cancelado-bg)', borderRadius: 8, padding: '8px 12px' }}>
+                {sendError}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
               <button
