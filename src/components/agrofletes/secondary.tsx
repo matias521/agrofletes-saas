@@ -1497,87 +1497,15 @@ function UsuariosTab() {
 
 function PlanTab() {
   return (
-    <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* Current plan */}
-      <div className="card">
-        <div className="card-header">
-          <h3>Plan actual</h3>
-          <span
-            style={{
-              background: 'var(--af-green-bg)',
-              color: 'var(--af-green-press)',
-              borderRadius: 999,
-              fontSize: 11,
-              fontWeight: 700,
-              padding: '3px 10px',
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-            }}
-          >
-            Free
-          </span>
-        </div>
-        <div className="card-body">
-          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                Viajes utilizados
-              </div>
-              <div
-                style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'var(--af-green-press)' }}
-              >
-                — / 30
-              </div>
-              <div
-                style={{
-                  marginTop: 8,
-                  height: 6,
-                  borderRadius: 3,
-                  background: 'var(--border-soft)',
-                  width: 200,
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    height: '100%',
-                    width: '0%',
-                    background: 'var(--af-green)',
-                    borderRadius: 3,
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+    <div style={{ maxWidth: 480, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '64px 0', gap: 16, textAlign: 'center' }}>
+      <div style={{ width: 56, height: 56, borderRadius: 16, background: 'var(--af-green-bg)', color: 'var(--af-green-press)', display: 'grid', placeItems: 'center' }}>
+        <Icon name="credit_card" size={28} />
       </div>
-
-      {/* Plan comparison */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <PlanCard
-          name="Free"
-          price="USD 0"
-          current
-          features={[
-            '30 viajes / mes',
-            'Hasta 3 usuarios',
-            'Gestión básica de flota',
-            'Soporte por email',
-          ]}
-        />
-        <PlanCard
-          name="Pro"
-          price="USD 79"
-          highlight
-          features={[
-            'Viajes ilimitados',
-            'Usuarios ilimitados',
-            'Reportes avanzados',
-            'Exportación Excel/PDF',
-            'API access',
-            'Soporte prioritario',
-          ]}
-        />
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>
+        Próximamente
+      </div>
+      <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: 340 }}>
+        La gestión de plan y facturación estará disponible pronto.
       </div>
     </div>
   )

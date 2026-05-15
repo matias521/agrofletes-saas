@@ -25,6 +25,7 @@ export default function RegisterPage() {
           nombre_completo: nombre,
           empresa_nombre: empresa,
         },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     })
 
