@@ -688,6 +688,7 @@ interface TripWizardProps {
   camiones: Camion[]
   onClose: () => void
   onSave: (data: WizardData) => void
+  onGoToCamiones: () => void
 }
 
 interface WizardFormData {
@@ -722,7 +723,7 @@ const EMPTY_DATA: WizardFormData = {
   tarifa: '',
 }
 
-export function TripWizard({ open, clientes, camiones, onClose, onSave }: TripWizardProps) {
+export function TripWizard({ open, clientes, camiones, onClose, onSave, onGoToCamiones }: TripWizardProps) {
   const [step, setStep] = useState(0)
   const [data, setData] = useState<WizardFormData>(EMPTY_DATA)
   const { showToast } = useToast()
@@ -769,6 +770,45 @@ export function TripWizard({ open, clientes, camiones, onClose, onSave }: TripWi
   }
 
   if (!open) return null
+
+  // Sin camiones: mostrar bloqueo antes de entrar al wizard
+  if (camiones.length === 0) {
+    return (
+      <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose() }}>
+        <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ maxWidth: 420, textAlign: 'center' }}>
+          <div className="modal-header" style={{ justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost btn-icon" onClick={handleClose}><Icon name="close" size={18} /></button>
+          </div>
+          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: '8px 32px 32px' }}>
+            <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--surface-muted)', display: 'grid', placeItems: 'center' }}>
+              <Icon name="local_shipping" size={32} style={{ color: 'var(--text-tertiary)' }} />
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
+                Necesitás un camión primero
+              </div>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                Para registrar un viaje tenés que tener al menos un camión cargado en tu flota.
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', marginTop: 8 }}>
+              <button
+                className="btn btn-primary"
+                style={{ justifyContent: 'center' }}
+                onClick={() => { handleClose(); onGoToCamiones() }}
+              >
+                <Icon name="add" size={16} />
+                Agregar camión a la flota
+              </button>
+              <button className="btn btn-ghost" style={{ justifyContent: 'center' }} onClick={handleClose}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const steps = [
     { title: 'Carga', sub: 'Cliente y mercadería' },

@@ -525,6 +525,7 @@ function AppContent() {
         camiones={camiones}
         onClose={() => setWizardOpen(false)}
         onSave={handleSaveNew}
+        onGoToCamiones={() => { setWizardOpen(false); setActivePage('camiones'); setOpenCamionesModal(true) }}
       />
 
       {/* Onboarding tutorial */}
