@@ -113,7 +113,8 @@ function AppContent() {
     // Crear cliente nuevo si corresponde
     let clienteId: string | null = data.clienteId === '__new__' ? null : data.clienteId || null
     if (data.clienteId === '__new__' && data.nuevoClienteRazon) {
-      const { data: nuevoCliente } = await supabase.from('clientes').insert({
+      const { data: nuevoCliente, error: cliErr } = await supabase.from('clientes').insert({
+        user_id: user!.id,
         razon: data.nuevoClienteRazon,
         alias: data.nuevoClienteRazon,
         activo: true,
@@ -121,10 +122,14 @@ function AppContent() {
       if (nuevoCliente) {
         clienteId = nuevoCliente.id
         setClientes((prev) => [...prev, clienteFromDB(nuevoCliente)])
+      } else if (cliErr) {
+        showToast(`Error al crear cliente: ${cliErr.message}`)
+        return
       }
     }
 
-    const { data: row } = await supabase.from('viajes').insert({
+    const { data: row, error } = await supabase.from('viajes').insert({
+      user_id: user!.id,
       fecha: data.fechaSal,
       fecha_lleg: data.fechaLleg || null,
       cliente_id: clienteId,
@@ -145,8 +150,10 @@ function AppContent() {
       const newViaje = viajeFromDB(row)
       setViajes((vs) => [newViaje, ...vs])
       showToast(`Viaje #${row.numero} creado como borrador.`)
+    } else if (error) {
+      showToast(`Error al crear viaje: ${error.message}`)
     }
-  }, [showToast])
+  }, [user, showToast])
 
   const handleNuevoCamion = useCallback(async (data: NuevaUnidadData) => {
     const supabase = createClient()
