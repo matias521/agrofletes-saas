@@ -18,14 +18,25 @@ import {
 
 // ── ClientesPage ──────────────────────────────────────────────────────────────
 
+export interface NuevoClienteData {
+  razon: string
+  alias: string
+  cuit: string
+  tel: string
+  localidad: string
+  rubro: string
+}
+
 interface ClientesPageProps {
   clientes: Cliente[]
   viajes?: Viaje[]
+  onNuevoCliente?: (data: NuevoClienteData) => Promise<void>
 }
 
-export function ClientesPage({ clientes, viajes = [] }: ClientesPageProps) {
+export function ClientesPage({ clientes, viajes = [], onNuevoCliente }: ClientesPageProps) {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [showNuevo, setShowNuevo] = useState(false)
 
   const filtered = clientes.filter((c) => {
     const q = search.toLowerCase()
@@ -47,7 +58,7 @@ export function ClientesPage({ clientes, viajes = [] }: ClientesPageProps) {
         title="Clientes"
         subtitle={`${clientes.length} clientes registrados`}
         actions={
-          <Button variant="primary" icon="add">
+          <Button variant="primary" icon="add" onClick={() => setShowNuevo(true)}>
             Nuevo cliente
           </Button>
         }
@@ -171,10 +182,20 @@ export function ClientesPage({ clientes, viajes = [] }: ClientesPageProps) {
         </div>
       </div>
 
-      {/* Drawer */}
+      {/* Drawer ver cliente */}
       <ClienteDrawer
         cliente={selected}
         onClose={() => setSelectedId(null)}
+      />
+
+      {/* Drawer nuevo cliente */}
+      <NuevoClienteDrawer
+        open={showNuevo}
+        onClose={() => setShowNuevo(false)}
+        onSave={async (data) => {
+          await onNuevoCliente?.(data)
+          setShowNuevo(false)
+        }}
       />
     </div>
   )
@@ -287,6 +308,75 @@ function ClienteDrawer({ cliente, onClose }: ClienteDrawerProps) {
           </div>
         </div>
       )}
+    </Drawer>
+  )
+}
+
+// ── NuevoClienteDrawer ────────────────────────────────────────────────────────
+
+interface NuevoClienteDrawerProps {
+  open: boolean
+  onClose: () => void
+  onSave: (data: NuevoClienteData) => Promise<void>
+}
+
+function NuevoClienteDrawer({ open, onClose, onSave }: NuevoClienteDrawerProps) {
+  const [razon, setRazon] = useState('')
+  const [alias, setAlias] = useState('')
+  const [cuit, setCuit] = useState('')
+  const [tel, setTel] = useState('')
+  const [localidad, setLocalidad] = useState('')
+  const [rubro, setRubro] = useState('')
+  const [saving, setSaving] = useState(false)
+  const { showToast } = useToast()
+
+  function reset() {
+    setRazon(''); setAlias(''); setCuit(''); setTel(''); setLocalidad(''); setRubro('')
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!razon.trim()) return
+    setSaving(true)
+    try {
+      await onSave({ razon: razon.trim(), alias: alias.trim() || razon.trim(), cuit: cuit.trim(), tel: tel.trim(), localidad: localidad.trim(), rubro: rubro.trim() })
+      showToast('Cliente agregado.')
+      reset()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Drawer open={open} onClose={() => { reset(); onClose() }} title="Nuevo cliente">
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Field label="Razón Social *">
+          <Input value={razon} onChange={(e) => setRazon(e.target.value)} placeholder="Empresa S.A." required />
+        </Field>
+        <Field label="Alias">
+          <Input value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Nombre corto" />
+        </Field>
+        <Field label="CUIT">
+          <Input value={cuit} onChange={(e) => setCuit(e.target.value)} placeholder="20-12345678-9" />
+        </Field>
+        <Field label="Teléfono">
+          <Input value={tel} onChange={(e) => setTel(e.target.value)} placeholder="+54 9 341 000-0000" />
+        </Field>
+        <Field label="Localidad">
+          <Input value={localidad} onChange={(e) => setLocalidad(e.target.value)} placeholder="Rosario, Santa Fe" />
+        </Field>
+        <Field label="Rubro">
+          <Input value={rubro} onChange={(e) => setRubro(e.target.value)} placeholder="Cerealista, Acopiador..." />
+        </Field>
+        <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+          <Button type="submit" variant="primary" disabled={saving || !razon.trim()}>
+            {saving ? 'Guardando...' : 'Guardar cliente'}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => { reset(); onClose() }}>
+            Cancelar
+          </Button>
+        </div>
+      </form>
     </Drawer>
   )
 }

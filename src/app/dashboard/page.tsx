@@ -6,7 +6,7 @@ import { Sidebar, Topbar } from '@/components/agrofletes/layout'
 import { DashboardPage } from '@/components/agrofletes/dashboard'
 import { TripsListPage, TripDetailPage, TripWizard, WizardData } from '@/components/agrofletes/trips'
 import type { TipoDoc } from '@/lib/agrofletes-data'
-import { ClientesPage, CamionesPage, ReportesPage, ConfigPage, NuevaUnidadData } from '@/components/agrofletes/secondary'
+import { ClientesPage, CamionesPage, ReportesPage, ConfigPage, NuevaUnidadData, NuevoClienteData } from '@/components/agrofletes/secondary'
 import { CamionDetailPage, CamionDetailData, NuevoDocData, NuevaTallerVisitaData, NuevoChoferData } from '@/components/agrofletes/camion-detail'
 import { OnboardingFlow } from '@/components/agrofletes/onboarding'
 import {
@@ -249,6 +249,25 @@ function AppContent() {
     }
   }, [user, showToast])
 
+  const handleNuevoCliente = useCallback(async (data: NuevoClienteData) => {
+    const supabase = createClient()
+    const { data: row, error } = await supabase.from('clientes').insert({
+      user_id: user!.id,
+      razon: data.razon,
+      alias: data.alias || data.razon,
+      cuit: data.cuit || null,
+      tel: data.tel || null,
+      localidad: data.localidad || null,
+      rubro: data.rubro || null,
+      activo: true,
+    }).select().single()
+    if (row) {
+      setClientes((prev) => [...prev, clienteFromDB(row)])
+    } else if (error) {
+      showToast(`Error al guardar: ${error.message}`)
+    }
+  }, [user, showToast])
+
   const handleSelectCamion = useCallback(async (camion: Camion) => {
     setOpenCamion(camion)
     setActivePage('camiones')
@@ -482,7 +501,7 @@ function AppContent() {
           />
         )
       case 'clientes':
-        return <ClientesPage clientes={clientes} viajes={viajes} />
+        return <ClientesPage clientes={clientes} viajes={viajes} onNuevoCliente={handleNuevoCliente} />
       case 'camiones':
         return <CamionesPage camiones={camiones} viajes={viajes} onNuevoCamion={handleNuevoCamion} onSelectCamion={handleSelectCamion} openNewUnitModal={openCamionesModal} />
       case 'reportes':
