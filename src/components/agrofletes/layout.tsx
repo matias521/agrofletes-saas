@@ -258,62 +258,71 @@ const PAGE_LABELS: Record<PageKey, string> = {
 }
 
 interface TopbarProps {
-  page: PageKey
-  subPage?: string
-  onBack?: () => void
-  searchValue?: string
-  onSearchChange?: (v: string) => void
   onOpenHelp?: () => void
+  alertas?: { id: string; label: string; desc: string; icon: string }[]
 }
 
-export function Topbar({ page, subPage, onBack, searchValue, onSearchChange, onOpenHelp }: TopbarProps) {
+export function Topbar({ onOpenHelp, alertas = [] }: TopbarProps) {
+  const [notifOpen, setNotifOpen] = useState(false)
+  const hasAlertas = alertas.length > 0
+
   return (
     <header className="app-topbar">
-      {onBack && (
-        <button
-          className="icon-btn"
-          onClick={onBack}
-          title="Volver"
-        >
-          <Icon name="arrow_back" size={20} />
+      <div style={{ position: 'relative' }}>
+        <button className="icon-btn" title="Notificaciones" onClick={() => setNotifOpen((v) => !v)}>
+          <Icon name="notifications" size={20} />
+          {hasAlertas && <span className="ping" />}
         </button>
-      )}
-      <div className="crumbs">
-        <span>AgroFletes</span>
-        <span className="sep">/</span>
-        <span className={subPage ? '' : 'here'}>{PAGE_LABELS[page]}</span>
-        {subPage && (
-          <>
-            <span className="sep">/</span>
-            <span className="here">{subPage}</span>
-          </>
+        {notifOpen && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 44,
+              right: 0,
+              width: 320,
+              background: 'var(--surface-card)',
+              border: '1px solid var(--border-soft)',
+              borderRadius: 12,
+              boxShadow: 'var(--shadow-xl)',
+              zIndex: 200,
+              overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>Notificaciones</span>
+              <button onClick={() => setNotifOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 2 }}>
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+            {alertas.length === 0 ? (
+              <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+                Sin notificaciones pendientes
+              </div>
+            ) : (
+              <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+                {alertas.map((a) => (
+                  <div key={a.id} style={{ display: 'flex', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border-soft)', alignItems: 'flex-start' }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: '#FFF3E0', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+                      <Icon name={a.icon} size={16} style={{ color: '#B25800' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{a.label}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{a.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {notifOpen && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 199 }} onClick={() => setNotifOpen(false)} />
         )}
       </div>
-
-      {onSearchChange !== undefined && (
-        <div className="quick-search">
-          <div className="input-affix-wrap">
-            <Icon name="search" size={16} style={{ left: 10 }} />
-            <input
-              className="input"
-              style={{ paddingLeft: 34, height: 34 }}
-              placeholder="Buscar..."
-              value={searchValue}
-              onChange={(e) => onSearchChange(e.target.value)}
-            />
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 4, marginLeft: onSearchChange === undefined ? 'auto' : 0 }}>
-        <button className="icon-btn" title="Notificaciones">
-          <Icon name="notifications" size={20} />
-          <span className="ping" />
-        </button>
-        <button className="icon-btn" title="Ayuda" onClick={onOpenHelp}>
-          <Icon name="help_outline" size={20} fill={0} />
-        </button>
-      </div>
+      <button className="icon-btn" title="Ayuda" onClick={onOpenHelp}>
+        <Icon name="help_outline" size={20} fill={0} />
+      </button>
     </header>
   )
 }

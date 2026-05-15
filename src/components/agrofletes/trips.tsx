@@ -461,7 +461,7 @@ export function TripDetailPage({ viaje, clientes, camiones, onBack, onUpdateEsta
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-      <Topbar page="viajes" subPage={`#${viaje.numero}`} onBack={onBack} />
+      <Topbar />
 
       <div className="page-body" style={{ flex: 1, overflowY: 'auto' }}>
         {/* Header */}

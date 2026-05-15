@@ -549,10 +549,13 @@ function AppContent() {
       <main className="main">
         {showTopbar && (
           <Topbar
-            page={activePage}
-            onSearchChange={() => {}}
-            searchValue=""
             onOpenHelp={handleOpenHelp}
+            alertas={alertasFlota.map((a) => ({
+              id: a.id,
+              label: a.label + (a.sub ? ` · ${a.sub}` : ''),
+              desc: a.kind === 'vencido' ? `Vencido hace ${Math.abs(a.dias)}d · ${a.venc}` : `Vence en ${a.dias}d · ${a.venc}`,
+              icon: a.icon,
+            }))}
           />
         )}
         {renderMain()}
