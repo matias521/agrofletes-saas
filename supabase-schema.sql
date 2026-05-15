@@ -43,17 +43,29 @@ create table if not exists clientes (
 
 -- ── Camiones ────────────────────────────────────────
 create table if not exists camiones (
-  id         uuid default gen_random_uuid() primary key,
-  user_id    uuid references auth.users on delete cascade not null,
-  patente    text not null,
-  tipo       text not null,
-  marca      text,
-  modelo     text,
-  anio       integer,
-  chofer     text,
-  activo     boolean default true,
-  created_at timestamptz default now()
+  id              uuid default gen_random_uuid() primary key,
+  user_id         uuid references auth.users on delete cascade not null,
+  patente         text not null,
+  tipo            text not null,
+  marca           text,
+  modelo          text,
+  anio            integer,
+  chofer          text,
+  activo          boolean default true,
+  peso_max_ton    numeric(8,2),
+  volumen_m3      numeric(8,2),
+  grain_cert      text default 'none',
+  has_gps         boolean default false,
+  km_acumulados   numeric(10,0) default 0,
+  created_at      timestamptz default now()
 );
+
+-- Migración: agregar columnas si la tabla ya existe sin ellas
+alter table camiones add column if not exists peso_max_ton  numeric(8,2);
+alter table camiones add column if not exists volumen_m3    numeric(8,2);
+alter table camiones add column if not exists grain_cert    text default 'none';
+alter table camiones add column if not exists has_gps       boolean default false;
+alter table camiones add column if not exists km_acumulados numeric(10,0) default 0;
 
 -- ── Viajes ──────────────────────────────────────────
 create table if not exists viajes (
