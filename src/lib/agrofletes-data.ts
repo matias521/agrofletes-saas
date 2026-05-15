@@ -654,3 +654,371 @@ export function camionById(id: string, list: Camion[]): Camion | undefined {
 export function docById(id: TipoDoc): { label: string; icon: string } {
   return TIPOS_DOC[id]
 }
+
+// ── Truck detail types ────────────────────────────────────────────────────────
+
+export interface Chofer {
+  id: string
+  camionId: string
+  nombre: string
+  dni: string
+  fechaNac: string
+  iniciales: string
+  tel: string
+  email: string
+  direccion: string
+  licencia: { cat: string; numero: string; venc: string }
+  psicofisico: { venc: string }
+  libretaSanidad: { venc: string }
+  antiguedad: string
+  viajesRealizados: number
+  kmConducidos: number
+}
+
+export interface DocVehiculo {
+  id: string
+  camionId: string
+  tipoId: string
+  numero: string
+  entidad: string
+  emision: string
+  venc: string
+  archivo?: string
+}
+
+export interface TallerVisita {
+  id: string
+  camionId: string
+  fecha: string
+  km: number
+  taller: string
+  motivo: 'preventivo' | 'correctivo'
+  trabajos: string[]
+  costo: number
+  proxKm: number
+}
+
+export interface Neumatico {
+  code: string
+  camionId?: string
+  marca: string
+  modelo: string
+  medida: string
+  kmInicial: number
+  kmActual: number
+  vidaUtilEsperada: number
+  fechaInst: string
+  seg: 'tractor' | 'trailer'
+  axle: string
+  side: 'I' | 'D'
+  inner: boolean | null
+  role: 'steer' | 'drive' | 'trailer'
+}
+
+export interface TipoDocVehiculo {
+  id: string
+  label: string
+  icon: string
+}
+
+export interface AxleDef {
+  id: string
+  steer: boolean
+  x: number
+}
+
+export interface TruckLayout {
+  label: string
+  tractorW: number
+  trailerW: number
+  tractor: AxleDef[]
+  trailer: AxleDef[]
+}
+
+export interface TirePosition {
+  code: string
+  axle: string
+  seg: 'tractor' | 'trailer'
+  side: 'I' | 'D'
+  inner: boolean | null
+  role: 'steer' | 'drive' | 'trailer'
+}
+
+// ── DB row types for new tables ───────────────────────────────────────────────
+
+export interface ChoferDB {
+  id: string
+  user_id: string
+  camion_id: string
+  nombre: string
+  dni: string | null
+  fecha_nac: string | null
+  iniciales: string | null
+  tel: string | null
+  email: string | null
+  direccion: string | null
+  lic_cat: string | null
+  lic_numero: string | null
+  lic_venc: string | null
+  psicofisico_venc: string | null
+  libreta_sanidad_venc: string | null
+  antiguedad: string | null
+  viajes_realizados: number | null
+  km_conducidos: number | null
+}
+
+export interface DocVehiculoDB {
+  id: string
+  user_id: string
+  camion_id: string
+  tipo_id: string
+  numero: string | null
+  entidad: string | null
+  emision: string | null
+  venc: string
+  archivo: string | null
+}
+
+export interface TallerVisitaDB {
+  id: string
+  user_id: string
+  camion_id: string
+  fecha: string
+  km: number | null
+  taller: string | null
+  motivo: string
+  trabajos: string[] | null
+  costo: number | null
+  prox_km: number | null
+  notas: string | null
+}
+
+export interface NeumaticooDB {
+  id: string
+  user_id: string
+  camion_id: string
+  code: string
+  marca: string | null
+  modelo: string | null
+  medida: string | null
+  km_inicial: number | null
+  km_actual: number | null
+  vida_util_esperada: number | null
+  fecha_inst: string | null
+  seg: string | null
+  axle: string | null
+  side: string | null
+  inner: boolean | null
+  role: string | null
+}
+
+// ── Truck detail constants ────────────────────────────────────────────────────
+
+export const TIPOS_DOC_VEHICULO: TipoDocVehiculo[] = [
+  { id: 'vtv',        label: 'VTV',                     icon: 'verified' },
+  { id: 'seguro',     label: 'Seguro obligatorio',      icon: 'shield' },
+  { id: 'cedula',     label: 'Cédula verde / azul',     icon: 'badge' },
+  { id: 'ruta',       label: 'RUTA (Registro Único)',   icon: 'task' },
+  { id: 'senasa_veh', label: 'Habilitación SENASA',     icon: 'agriculture' },
+  { id: 'matafuego',  label: 'Matafuegos',              icon: 'fire_extinguisher' },
+  { id: 'tacografo',  label: 'Tacógrafo / GPS',         icon: 'speed' },
+]
+
+export const TRUCK_LAYOUTS: Record<string, TruckLayout> = {
+  carreton: {
+    label: 'Carretón 3+3',
+    tractorW: 280, trailerW: 460,
+    tractor: [
+      { id: 'EJ1', steer: true,  x: 70 },
+      { id: 'EJ2', steer: false, x: 200 },
+      { id: 'EJ3', steer: false, x: 250 },
+    ],
+    trailer: [
+      { id: 'EJ4', steer: false, x: 80 },
+      { id: 'EJ5', steer: false, x: 220 },
+      { id: 'EJ6', steer: false, x: 360 },
+    ],
+  },
+  camilla: {
+    label: 'Camilla 4×2',
+    tractorW: 320, trailerW: 0,
+    tractor: [
+      { id: 'EJ1', steer: true,  x: 80 },
+      { id: 'EJ2', steer: false, x: 240 },
+    ],
+    trailer: [],
+  },
+  semirremolque: {
+    label: 'Semi tolva 1+1+3',
+    tractorW: 260, trailerW: 460,
+    tractor: [
+      { id: 'EJ1', steer: true,  x: 60 },
+      { id: 'EJ2', steer: false, x: 200 },
+    ],
+    trailer: [
+      { id: 'EJ3', steer: false, x: 80 },
+      { id: 'EJ4', steer: false, x: 220 },
+      { id: 'EJ5', steer: false, x: 360 },
+    ],
+  },
+  tolva: {
+    label: 'Semi tolva 1+1+3',
+    tractorW: 260, trailerW: 460,
+    tractor: [
+      { id: 'EJ1', steer: true,  x: 60 },
+      { id: 'EJ2', steer: false, x: 200 },
+    ],
+    trailer: [
+      { id: 'EJ3', steer: false, x: 80 },
+      { id: 'EJ4', steer: false, x: 220 },
+      { id: 'EJ5', steer: false, x: 360 },
+    ],
+  },
+  semi_playo: {
+    label: 'Semi playo 1+1+3',
+    tractorW: 260, trailerW: 460,
+    tractor: [
+      { id: 'EJ1', steer: true,  x: 60 },
+      { id: 'EJ2', steer: false, x: 200 },
+    ],
+    trailer: [
+      { id: 'EJ3', steer: false, x: 80 },
+      { id: 'EJ4', steer: false, x: 220 },
+      { id: 'EJ5', steer: false, x: 360 },
+    ],
+  },
+  acoplado: {
+    label: 'Acoplado 1+1+3',
+    tractorW: 260, trailerW: 460,
+    tractor: [
+      { id: 'EJ1', steer: true,  x: 60 },
+      { id: 'EJ2', steer: false, x: 200 },
+    ],
+    trailer: [
+      { id: 'EJ3', steer: false, x: 80 },
+      { id: 'EJ4', steer: false, x: 220 },
+      { id: 'EJ5', steer: false, x: 360 },
+    ],
+  },
+}
+
+export const TIRE_BRANDS = ['Goodyear', 'Michelin', 'Pirelli', 'Bridgestone', 'Firestone', 'Fate']
+export const TIRE_SIZES = ['295/80R22.5', '11R22.5', '275/80R22.5']
+export const TIRE_MODELS_BY_ROLE: Record<string, string[]> = {
+  steer:   ['KMAX S', 'X Multi Z', 'FR01',  'R249',  'FS400',  'SR59'],
+  drive:   ['KMAX D', 'X Multi D', 'TR01',  'M729',  'FD663',  'SLR23'],
+  trailer: ['KMAX T', 'X Multi T', 'ST01',  'R168',  'FT492',  'SF99'],
+}
+
+// ── Truck detail utilities ────────────────────────────────────────────────────
+
+export function estadoVencimiento(iso: string): { kind: 'vigente' | 'por_vencer' | 'vencido'; dias: number } {
+  const [y, m, d] = iso.split('-').map(Number)
+  const target = new Date(y, m - 1, d).getTime()
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const dias = Math.round((target - today.getTime()) / 86400000)
+  if (dias < 0)  return { kind: 'vencido',    dias }
+  if (dias <= 30) return { kind: 'por_vencer', dias }
+  return { kind: 'vigente', dias }
+}
+
+export function tireWearPct(tire: Neumatico): number {
+  const usado = tire.kmActual - tire.kmInicial
+  const pct = Math.max(0, Math.min(100, (usado / tire.vidaUtilEsperada) * 100))
+  return Math.round(pct)
+}
+
+export function tireWearLevel(pct: number): 'ok' | 'alerta' | 'critico' {
+  if (pct >= 80) return 'critico'
+  if (pct >= 55) return 'alerta'
+  return 'ok'
+}
+
+export function tirePositionsFor(tipo: string): TirePosition[] {
+  const layout = TRUCK_LAYOUTS[tipo] ?? TRUCK_LAYOUTS['semirremolque']
+  const pos: TirePosition[] = []
+  for (const seg of ['tractor', 'trailer'] as const) {
+    for (const axle of layout[seg]) {
+      if (axle.steer) {
+        pos.push({ code: `${axle.id}-I`, axle: axle.id, seg, side: 'I', inner: null, role: 'steer' })
+        pos.push({ code: `${axle.id}-D`, axle: axle.id, seg, side: 'D', inner: null, role: 'steer' })
+      } else {
+        const role: TirePosition['role'] = seg === 'tractor' ? 'drive' : 'trailer'
+        pos.push({ code: `${axle.id}-IE`, axle: axle.id, seg, side: 'I', inner: false, role })
+        pos.push({ code: `${axle.id}-II`, axle: axle.id, seg, side: 'I', inner: true,  role })
+        pos.push({ code: `${axle.id}-DI`, axle: axle.id, seg, side: 'D', inner: true,  role })
+        pos.push({ code: `${axle.id}-DE`, axle: axle.id, seg, side: 'D', inner: false, role })
+      }
+    }
+  }
+  return pos
+}
+
+// ── DB → App mappers for new tables ──────────────────────────────────────────
+
+export function choferFromDB(row: ChoferDB): Chofer {
+  return {
+    id: row.id,
+    camionId: row.camion_id,
+    nombre: row.nombre,
+    dni: row.dni ?? '',
+    fechaNac: row.fecha_nac ?? '',
+    iniciales: row.iniciales ?? row.nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+    tel: row.tel ?? '',
+    email: row.email ?? '',
+    direccion: row.direccion ?? '',
+    licencia: { cat: row.lic_cat ?? '', numero: row.lic_numero ?? '', venc: row.lic_venc ?? '' },
+    psicofisico: { venc: row.psicofisico_venc ?? '' },
+    libretaSanidad: { venc: row.libreta_sanidad_venc ?? '' },
+    antiguedad: row.antiguedad ?? '',
+    viajesRealizados: row.viajes_realizados ?? 0,
+    kmConducidos: row.km_conducidos ?? 0,
+  }
+}
+
+export function docVehiculoFromDB(row: DocVehiculoDB): DocVehiculo {
+  return {
+    id: row.id,
+    camionId: row.camion_id,
+    tipoId: row.tipo_id,
+    numero: row.numero ?? '',
+    entidad: row.entidad ?? '',
+    emision: row.emision ?? '',
+    venc: row.venc,
+    archivo: row.archivo ?? undefined,
+  }
+}
+
+export function tallerVisitaFromDB(row: TallerVisitaDB): TallerVisita {
+  return {
+    id: row.id,
+    camionId: row.camion_id,
+    fecha: row.fecha,
+    km: row.km ?? 0,
+    taller: row.taller ?? '',
+    motivo: (row.motivo as 'preventivo' | 'correctivo') ?? 'preventivo',
+    trabajos: row.trabajos ?? [],
+    costo: row.costo ?? 0,
+    proxKm: row.prox_km ?? 0,
+  }
+}
+
+export function neumaticoFromDB(row: NeumaticooDB): Neumatico {
+  return {
+    code: row.code,
+    camionId: row.camion_id,
+    marca: row.marca ?? '',
+    modelo: row.modelo ?? '',
+    medida: row.medida ?? '',
+    kmInicial: row.km_inicial ?? 0,
+    kmActual: row.km_actual ?? 0,
+    vidaUtilEsperada: row.vida_util_esperada ?? 100000,
+    fechaInst: row.fecha_inst ?? '',
+    seg: (row.seg as 'tractor' | 'trailer') ?? 'tractor',
+    axle: row.axle ?? '',
+    side: (row.side as 'I' | 'D') ?? 'I',
+    inner: row.inner,
+    role: (row.role as 'steer' | 'drive' | 'trailer') ?? 'drive',
+  }
+}

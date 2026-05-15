@@ -6,15 +6,22 @@ import { Sidebar, Topbar } from '@/components/agrofletes/layout'
 import { DashboardPage } from '@/components/agrofletes/dashboard'
 import { TripsListPage, TripDetailPage, TripWizard, WizardData } from '@/components/agrofletes/trips'
 import { ClientesPage, CamionesPage, ReportesPage, ConfigPage, NuevaUnidadData } from '@/components/agrofletes/secondary'
+import { CamionDetailPage, CamionDetailData, NuevoDocData, NuevaTallerVisitaData, NuevoChoferData } from '@/components/agrofletes/camion-detail'
+import { OnboardingFlow } from '@/components/agrofletes/onboarding'
 import {
   Viaje,
   Cliente,
   Camion,
+  Neumatico,
   EstadoKey,
   ESTADOS,
   viajeFromDB,
   clienteFromDB,
   camionFromDB,
+  choferFromDB,
+  docVehiculoFromDB,
+  tallerVisitaFromDB,
+  neumaticoFromDB,
 } from '@/lib/agrofletes-data'
 import { createClient } from '@/lib/supabase'
 
@@ -29,7 +36,13 @@ function AppContent() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [camiones, setCamiones] = useState<Camion[]>([])
   const [openViaje, setOpenViaje] = useState<Viaje | null>(null)
+  const [openCamion, setOpenCamion] = useState<Camion | null>(null)
+  const [camionDetail, setCamionDetail] = useState<CamionDetailData>({ chofer: null, docs: [], taller: [], tires: [] })
+  const [camionDetailLoading, setCamionDetailLoading] = useState(false)
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [onboardingOpen, setOnboardingOpen] = useState(false)
+  const [spotlightNav, setSpotlightNav] = useState<string | undefined>(undefined)
+  const [openCamionesModal, setOpenCamionesModal] = useState(false)
   const [plan, setPlan] = useState<'Free' | 'Pro'>('Free')
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
@@ -77,6 +90,15 @@ function AppContent() {
       setPlan((perfil?.plan as 'Free' | 'Pro') ?? 'Free')
       setUser({ id: authUser.id, email: authUser.email })
       setLoading(false)
+
+      // Show onboarding on first visit
+      try {
+        if (!localStorage.getItem('af_onboarding_done')) {
+          setOnboardingOpen(true)
+        }
+      } catch {
+        // localStorage not available
+      }
     }
     load()
   }, [router])
@@ -85,6 +107,31 @@ function AppContent() {
     setActivePage(page)
     setOpenViaje(null)
   }, [])
+
+  const handleOnboardingNavigate = useCallback((page: string) => {
+    setSpotlightNav(page === 'inicio' ? undefined : page)
+  }, [])
+
+  const handleOnboardingClose = useCallback(() => {
+    setOnboardingOpen(false)
+    setSpotlightNav(undefined)
+    try { localStorage.setItem('af_onboarding_done', '1') } catch { /* ignore */ }
+  }, [])
+
+  const handleOnboardingFinish = useCallback(() => {
+    handleOnboardingClose()
+    handleNavigate('inicio')
+  }, [handleOnboardingClose, handleNavigate])
+
+  const handleOpenHelp = useCallback(() => {
+    setOnboardingOpen(true)
+  }, [])
+
+  const handleAddFirstTruck = useCallback(() => {
+    handleOnboardingClose()
+    setActivePage('camiones')
+    setOpenCamionesModal(true)
+  }, [handleOnboardingClose])
 
   const handleViewViaje = useCallback((v: Viaje) => {
     setActivePage('viajes')
@@ -179,6 +226,128 @@ function AppContent() {
     }
   }, [user, showToast])
 
+  const handleSelectCamion = useCallback(async (camion: Camion) => {
+    setOpenCamion(camion)
+    setActivePage('camiones')
+    setCamionDetailLoading(true)
+    const supabase = createClient()
+    const [
+      { data: choferDB },
+      { data: docsDB },
+      { data: tallerDB },
+      { data: neumaticosDB },
+    ] = await Promise.all([
+      supabase.from('camion_choferes').select('*').eq('camion_id', camion.id).single(),
+      supabase.from('camion_docs').select('*').eq('camion_id', camion.id).order('venc'),
+      supabase.from('camion_taller').select('*').eq('camion_id', camion.id).order('fecha', { ascending: false }),
+      supabase.from('camion_neumaticos').select('*').eq('camion_id', camion.id),
+    ])
+    setCamionDetail({
+      chofer: choferDB ? choferFromDB(choferDB) : null,
+      docs: (docsDB ?? []).map(docVehiculoFromDB),
+      taller: (tallerDB ?? []).map(tallerVisitaFromDB),
+      tires: (neumaticosDB ?? []).map(neumaticoFromDB),
+    })
+    setCamionDetailLoading(false)
+  }, [])
+
+  const handleSetTires = useCallback(async (tires: Neumatico[]) => {
+    if (!openCamion || !user) return
+    setCamionDetail((prev) => ({ ...prev, tires }))
+    const supabase = createClient()
+    // Delete all existing tires for this truck and reinsert
+    await supabase.from('camion_neumaticos').delete().eq('camion_id', openCamion.id)
+    if (tires.length > 0) {
+      await supabase.from('camion_neumaticos').insert(
+        tires.map((t) => ({
+          user_id: user.id,
+          camion_id: openCamion.id,
+          code: t.code,
+          marca: t.marca,
+          modelo: t.modelo,
+          medida: t.medida,
+          km_inicial: t.kmInicial,
+          km_actual: t.kmActual,
+          vida_util_esperada: t.vidaUtilEsperada,
+          fecha_inst: t.fechaInst,
+          seg: t.seg,
+          axle: t.axle,
+          side: t.side,
+          inner: t.inner,
+          role: t.role,
+        }))
+      )
+    }
+  }, [openCamion, user])
+
+  const handleAddDoc = useCallback(async (camionId: string, data: NuevoDocData) => {
+    const supabase = createClient()
+    const { data: row, error } = await supabase.from('camion_docs').insert({
+      user_id: user!.id,
+      camion_id: camionId,
+      tipo_id: data.tipoId,
+      numero: data.numero || null,
+      entidad: data.entidad || null,
+      emision: data.emision || null,
+      venc: data.venc,
+    }).select().single()
+    if (row) {
+      setCamionDetail((prev) => ({ ...prev, docs: [...prev.docs, docVehiculoFromDB(row)] }))
+      showToast('Documento guardado.')
+    } else if (error) {
+      showToast(`Error: ${error.message}`)
+    }
+  }, [user, showToast])
+
+  const handleSaveChofer = useCallback(async (camionId: string, data: NuevoChoferData) => {
+    const supabase = createClient()
+    const { data: row, error } = await supabase.from('camion_choferes').upsert({
+      user_id: user!.id,
+      camion_id: camionId,
+      nombre: data.nombre,
+      iniciales: data.nombre.split(/\s+/).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+      dni: data.dni || null,
+      tel: data.tel || null,
+      email: data.email || null,
+      lic_cat: data.licCat || null,
+      lic_numero: data.licNumero || null,
+      lic_venc: data.licVenc || null,
+      psicofisico_venc: data.psicofisicoVenc || null,
+      libreta_sanidad_venc: data.libretaSanidadVenc || null,
+    }, { onConflict: 'camion_id' }).select().single()
+    if (row) {
+      setCamionDetail((prev) => ({ ...prev, chofer: choferFromDB(row) }))
+      showToast(`Chofer ${data.nombre} guardado.`)
+    } else if (error) {
+      showToast(`Error: ${error.message}`)
+    }
+  }, [user, showToast])
+
+  const handleAddTaller = useCallback(async (camionId: string, data: NuevaTallerVisitaData) => {
+    const supabase = createClient()
+    const { data: row, error } = await supabase.from('camion_taller').insert({
+      user_id: user!.id,
+      camion_id: camionId,
+      fecha: data.fecha,
+      taller: data.taller || null,
+      motivo: data.motivo,
+      trabajos: data.trabajos,
+      costo: data.costo,
+      km: data.km,
+      prox_km: data.proxKm,
+      notas: data.notas || null,
+    }).select().single()
+    if (row) {
+      setCamionDetail((prev) => ({
+        ...prev,
+        taller: [tallerVisitaFromDB(row), ...prev.taller],
+      }))
+      showToast('Visita al taller registrada.')
+    } else if (error) {
+      showToast(`Error: ${error.message}`)
+    }
+  }, [user, showToast])
+
   const handleLogout = useCallback(async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -228,6 +397,23 @@ function AppContent() {
       )
     }
 
+    if (openCamion) {
+      return (
+        <CamionDetailPage
+          camion={openCamion}
+          viajes={viajes}
+          clientes={clientes}
+          detailData={camionDetail}
+          loading={camionDetailLoading}
+          onBack={() => setOpenCamion(null)}
+          onSetTires={handleSetTires}
+          onAddDoc={handleAddDoc}
+          onAddTaller={handleAddTaller}
+          onSaveChofer={handleSaveChofer}
+        />
+      )
+    }
+
     switch (activePage) {
       case 'inicio':
         return (
@@ -255,7 +441,7 @@ function AppContent() {
       case 'clientes':
         return <ClientesPage clientes={clientes} viajes={viajes} />
       case 'camiones':
-        return <CamionesPage camiones={camiones} viajes={viajes} onNuevoCamion={handleNuevoCamion} />
+        return <CamionesPage camiones={camiones} viajes={viajes} onNuevoCamion={handleNuevoCamion} onSelectCamion={handleSelectCamion} openNewUnitModal={openCamionesModal} />
       case 'reportes':
         return <ReportesPage />
       case 'configuracion':
@@ -265,7 +451,7 @@ function AppContent() {
     }
   }
 
-  const showTopbar = !openViaje
+  const showTopbar = !openViaje && !openCamion
 
   return (
     <div className="app-shell">
@@ -275,6 +461,7 @@ function AppContent() {
         plan={plan}
         onLogout={handleLogout}
         user={user ?? undefined}
+        spotlightNav={onboardingOpen ? spotlightNav : undefined}
       />
       <main className="main">
         {showTopbar && (
@@ -282,6 +469,7 @@ function AppContent() {
             page={activePage}
             onSearchChange={() => {}}
             searchValue=""
+            onOpenHelp={handleOpenHelp}
           />
         )}
         {renderMain()}
@@ -294,6 +482,15 @@ function AppContent() {
         camiones={camiones}
         onClose={() => setWizardOpen(false)}
         onSave={handleSaveNew}
+      />
+
+      {/* Onboarding tutorial */}
+      <OnboardingFlow
+        open={onboardingOpen}
+        onClose={handleOnboardingClose}
+        onFinish={handleOnboardingFinish}
+        onNavigate={handleOnboardingNavigate}
+        onAddFirstTruck={handleAddFirstTruck}
       />
     </div>
   )

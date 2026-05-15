@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image'
 import { Icon } from './icon'
 import { COMPANY } from '@/lib/agrofletes-data'
@@ -27,15 +27,120 @@ const NAV_BOTTOM: NavItemDef[] = [
   { key: 'configuracion', label: 'Configuración',   icon: 'settings' },
 ]
 
+function FeedbackModal({ onClose }: { onClose: () => void }) {
+  const [text, setText] = useState('')
+  const [sent, setSent] = useState(false)
+
+  function handleSubmit() {
+    if (!text.trim()) return
+    // In a real app this would POST to an endpoint; for the prototype just acknowledge
+    setSent(true)
+    setTimeout(onClose, 1800)
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(0,0,0,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: 'var(--surface-card)',
+          borderRadius: 16,
+          padding: '28px 28px 24px',
+          width: 420,
+          maxWidth: 'calc(100vw - 32px)',
+          boxShadow: 'var(--shadow-xl)',
+          display: 'flex', flexDirection: 'column', gap: 16,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: 'var(--af-green)', display: 'grid', placeItems: 'center',
+            }}>
+              <Icon name="feedback" size={18} style={{ color: '#fff' }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>
+                ¿En qué podemos mejorar?
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>Prototipo AgroFletes</div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', borderRadius: 6 }}
+          >
+            <Icon name="close" size={18} />
+          </button>
+        </div>
+
+        {sent ? (
+          <div style={{
+            padding: '20px 0', textAlign: 'center',
+            color: 'var(--af-green)', fontWeight: 600, fontSize: 15,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+          }}>
+            <Icon name="check_circle" size={32} />
+            ¡Gracias por tu sugerencia!
+          </div>
+        ) : (
+          <>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Contanos qué mejorarías, qué te faltó o qué no funcionó como esperabas..."
+              rows={5}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                background: 'var(--surface-app)',
+                border: '1.5px solid var(--border)',
+                borderRadius: 10,
+                padding: '12px 14px',
+                fontSize: 14,
+                color: 'var(--text-primary)',
+                resize: 'vertical',
+                fontFamily: 'var(--font-sans)',
+                lineHeight: 1.55,
+                outline: 'none',
+              }}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSubmit}
+                disabled={!text.trim()}
+              >
+                <Icon name="send" size={15} /> Enviar
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 interface SidebarProps {
   active: PageKey
   onNavigate: (page: PageKey) => void
   plan: 'Free' | 'Pro'
   onLogout?: () => void
   user?: { email?: string }
+  spotlightNav?: string
 }
 
-export function Sidebar({ active, onNavigate, plan, onLogout, user }: SidebarProps) {
+export function Sidebar({ active, onNavigate, plan, onLogout, user, spotlightNav }: SidebarProps) {
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   const displayName = user?.email
     ? user.email.split('@')[0]
     : 'Usuario'
@@ -60,7 +165,7 @@ export function Sidebar({ active, onNavigate, plan, onLogout, user }: SidebarPro
         {NAV_ITEMS.map((item) => (
           <div
             key={item.key}
-            className={`nav-item${active === item.key ? ' active' : ''}`}
+            className={`nav-item${active === item.key ? ' active' : ''}${spotlightNav === item.key ? ' ob-spotlight' : ''}`}
             onClick={() => onNavigate(item.key)}
           >
             <Icon name={item.icon} size={20} />
@@ -73,7 +178,7 @@ export function Sidebar({ active, onNavigate, plan, onLogout, user }: SidebarPro
         {NAV_BOTTOM.map((item) => (
           <div
             key={item.key}
-            className={`nav-item${active === item.key ? ' active' : ''}`}
+            className={`nav-item${active === item.key ? ' active' : ''}${spotlightNav === item.key ? ' ob-spotlight' : ''}`}
             onClick={() => onNavigate(item.key)}
           >
             <Icon name={item.icon} size={20} />
@@ -82,16 +187,16 @@ export function Sidebar({ active, onNavigate, plan, onLogout, user }: SidebarPro
         ))}
       </nav>
 
-      {/* Plan card (only show for Free) */}
-      {plan === 'Free' && (
-        <div className="plan-card">
-          <div className="plan-name">Plan {plan}</div>
-          <div className="plan-desc">
-            Usás {COMPANY.planMax} de 30 viajes disponibles este mes.
-          </div>
-          <button>Mejorar a Pro</button>
+      {/* Beta user card */}
+      <div className="plan-card">
+        <div className="plan-name">Usuario Beta</div>
+        <div className="plan-desc">
+          Esto es un prototipo brindado para personas seleccionadas.
         </div>
-      )}
+        <button onClick={() => setFeedbackOpen(true)}>Enviar sugerencias</button>
+      </div>
+
+      {feedbackOpen && <FeedbackModal onClose={() => setFeedbackOpen(false)} />}
 
       {/* User tile */}
       <div
@@ -146,9 +251,10 @@ interface TopbarProps {
   onBack?: () => void
   searchValue?: string
   onSearchChange?: (v: string) => void
+  onOpenHelp?: () => void
 }
 
-export function Topbar({ page, subPage, onBack, searchValue, onSearchChange }: TopbarProps) {
+export function Topbar({ page, subPage, onBack, searchValue, onSearchChange, onOpenHelp }: TopbarProps) {
   return (
     <header className="app-topbar">
       {onBack && (
@@ -192,7 +298,7 @@ export function Topbar({ page, subPage, onBack, searchValue, onSearchChange }: T
           <Icon name="notifications" size={20} />
           <span className="ping" />
         </button>
-        <button className="icon-btn" title="Ayuda">
+        <button className="icon-btn" title="Ayuda" onClick={onOpenHelp}>
           <Icon name="help_outline" size={20} fill={0} />
         </button>
       </div>

@@ -106,3 +106,96 @@ create policy "perfiles_own" on perfiles for all using (auth.uid() = id);
 create policy "clientes_own" on clientes for all using (auth.uid() = user_id);
 create policy "camiones_own" on camiones for all using (auth.uid() = user_id);
 create policy "viajes_own"   on viajes   for all using (auth.uid() = user_id);
+
+-- ── Camion choferes ─────────────────────────────────────────
+create table if not exists camion_choferes (
+  id                  uuid default gen_random_uuid() primary key,
+  user_id             uuid references auth.users on delete cascade not null,
+  camion_id           uuid references camiones(id) on delete cascade not null,
+  nombre              text not null,
+  dni                 text,
+  fecha_nac           date,
+  iniciales           text,
+  tel                 text,
+  email               text,
+  direccion           text,
+  lic_cat             text,
+  lic_numero          text,
+  lic_venc            date,
+  psicofisico_venc    date,
+  libreta_sanidad_venc date,
+  antiguedad          text,
+  viajes_realizados   integer default 0,
+  km_conducidos       integer default 0,
+  created_at          timestamptz default now(),
+  unique (camion_id)
+);
+
+-- ── Camion documentos ───────────────────────────────────────
+create table if not exists camion_docs (
+  id         uuid default gen_random_uuid() primary key,
+  user_id    uuid references auth.users on delete cascade not null,
+  camion_id  uuid references camiones(id) on delete cascade not null,
+  tipo_id    text not null,
+  numero     text,
+  entidad    text,
+  emision    date,
+  venc       date not null,
+  archivo    text,
+  created_at timestamptz default now()
+);
+
+-- ── Camion taller ───────────────────────────────────────────
+create table if not exists camion_taller (
+  id         uuid default gen_random_uuid() primary key,
+  user_id    uuid references auth.users on delete cascade not null,
+  camion_id  uuid references camiones(id) on delete cascade not null,
+  fecha      date not null,
+  km         integer,
+  taller     text,
+  motivo     text default 'preventivo' check (motivo in ('preventivo','correctivo')),
+  trabajos   text[] default '{}',
+  costo      numeric(12,2),
+  prox_km    integer,
+  notas      text,
+  created_at timestamptz default now()
+);
+alter table camion_taller add column if not exists notas text;
+
+-- ── Camion neumaticos ───────────────────────────────────────
+create table if not exists camion_neumaticos (
+  id                 uuid default gen_random_uuid() primary key,
+  user_id            uuid references auth.users on delete cascade not null,
+  camion_id          uuid references camiones(id) on delete cascade not null,
+  code               text not null,
+  marca              text,
+  modelo             text,
+  medida             text,
+  km_inicial         integer,
+  km_actual          integer,
+  vida_util_esperada integer,
+  fecha_inst         date,
+  seg                text,
+  axle               text,
+  side               text,
+  "inner"            boolean,
+  role               text,
+  created_at         timestamptz default now(),
+  unique (camion_id, code)
+);
+
+-- RLS for new tables
+alter table camion_choferes  enable row level security;
+alter table camion_docs      enable row level security;
+alter table camion_taller    enable row level security;
+alter table camion_neumaticos enable row level security;
+
+drop policy if exists "cam_choferes_own"   on camion_choferes;
+drop policy if exists "cam_docs_own"       on camion_docs;
+drop policy if exists "cam_taller_own"     on camion_taller;
+drop policy if exists "cam_neumaticos_own" on camion_neumaticos;
+
+create policy "cam_choferes_own"   on camion_choferes   for all using (auth.uid() = user_id);
+create policy "cam_docs_own"       on camion_docs       for all using (auth.uid() = user_id);
+create policy "cam_taller_own"     on camion_taller     for all using (auth.uid() = user_id);
+create policy "cam_neumaticos_own" on camion_neumaticos for all using (auth.uid() = user_id);

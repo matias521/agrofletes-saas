@@ -94,7 +94,7 @@ export function Button({
 // ── Field wrapper ─────────────────────────────────────────────────────────────
 
 interface FieldProps {
-  label?: string
+  label?: React.ReactNode
   hint?: string
   error?: string
   children: React.ReactNode

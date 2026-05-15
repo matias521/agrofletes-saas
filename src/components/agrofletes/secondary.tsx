@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Icon } from './icon'
 import { Button, Drawer, Tabs, Field, Input, SelectInput, Textarea, DataRow, useToast } from './ui'
 import { PageHeader } from './layout'
@@ -322,12 +322,18 @@ interface CamionesPageProps {
   camiones: Camion[]
   viajes?: Viaje[]
   onNuevoCamion?: (data: NuevaUnidadData) => Promise<void>
+  onSelectCamion?: (c: Camion) => void
+  openNewUnitModal?: boolean
 }
 
-export function CamionesPage({ camiones, viajes = [], onNuevoCamion }: CamionesPageProps) {
+export function CamionesPage({ camiones, viajes = [], onNuevoCamion, onSelectCamion, openNewUnitModal }: CamionesPageProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (openNewUnitModal) setModalOpen(true)
+  }, [openNewUnitModal])
 
   const filtered = camiones.filter((c) => {
     const q = search.toLowerCase()
@@ -415,7 +421,7 @@ export function CamionesPage({ camiones, viajes = [], onNuevoCamion }: CamionesP
                   border: selectedId === c.id ? '1.5px solid var(--af-green)' : undefined,
                   transition: 'border-color 150ms',
                 }}
-                onClick={() => setSelectedId(c.id)}
+                onClick={() => { if (onSelectCamion) { onSelectCamion(c) } else { setSelectedId(c.id) } }}
               >
                 <div
                   style={{
