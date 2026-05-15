@@ -52,7 +52,9 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'rgba(0,0,0,0.45)',
+        background: 'rgba(0,0,0,0.25)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
       onClick={onClose}
