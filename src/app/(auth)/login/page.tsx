@@ -40,30 +40,8 @@ export default function LoginPage() {
       gap: 24,
     }}>
       {/* Brand mark */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-        <div style={{
-          width: 44,
-          height: 44,
-          borderRadius: 12,
-          background: 'var(--af-green)',
-          display: 'grid',
-          placeItems: 'center',
-          fontFamily: 'var(--font-display)',
-          fontWeight: 800,
-          fontSize: 20,
-          color: '#fff',
-          letterSpacing: -0.5,
-        }}>
-          A
-        </div>
-        <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, letterSpacing: -0.3 }}>
-            AgroFletes
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-            Gestión de fletes agrícolas
-          </div>
-        </div>
+      <div style={{ marginBottom: 8 }}>
+        <img src="/logo.svg" alt="AgroFletes" style={{ height: 56, width: 'auto' }} />
       </div>
 
       <div>
