@@ -36,6 +36,9 @@ export function DashboardPage({
     .reduce((acc, v) => acc + v.monto, 0)
 
   const enTransito = viajes.filter((v) => v.estado === 'EN_TRANSITO').length
+  const camionsSinChofer = camiones.filter((c) => c.activo && !c.chofer).length
+  const camionesInactivos = camiones.filter((c) => !c.activo).length
+  const totalAlertas = (enTransito > 0 ? 1 : 0) + (camionsSinChofer > 0 ? 1 : 0) + (camionesInactivos > 0 ? 1 : 0)
   const entregados = viajes.filter((v) => v.estado === 'ENTREGADO').length
   const totalTons = viajes.reduce((acc, v) => acc + v.toneladas, 0)
 
@@ -142,23 +145,40 @@ export function DashboardPage({
                   padding: '2px 8px',
                 }}
               >
-                {enTransito > 0 ? `${enTransito} activas` : '0 activas'}
+                {totalAlertas > 0 ? `${totalAlertas} activas` : '0 activas'}
               </span>
             </div>
             <div className="card-body" style={{ padding: 0 }}>
-              {enTransito > 0 ? (
+              {totalAlertas === 0 && (
+                <AlertItem
+                  type="info"
+                  icon="check_circle"
+                  title="Sin alertas activas"
+                  desc="Todos los viajes y la flota están al día"
+                />
+              )}
+              {enTransito > 0 && (
                 <AlertItem
                   type="info"
                   icon="local_shipping"
                   title={`${enTransito} viaje${enTransito > 1 ? 's' : ''} en tránsito`}
                   desc="Monitoreá el estado desde la sección Viajes"
                 />
-              ) : (
+              )}
+              {camionsSinChofer > 0 && (
                 <AlertItem
-                  type="info"
-                  icon="check_circle"
-                  title="Sin alertas activas"
-                  desc="Todos los viajes están al día"
+                  type="warn"
+                  icon="person_off"
+                  title={`${camionsSinChofer} camión${camionsSinChofer > 1 ? 'es' : ''} sin chofer`}
+                  desc="Asigná un chofer desde la sección Camiones"
+                />
+              )}
+              {camionesInactivos > 0 && (
+                <AlertItem
+                  type="warn"
+                  icon="directions_car"
+                  title={`${camionesInactivos} unidad${camionesInactivos > 1 ? 'es' : ''} inactiva${camionesInactivos > 1 ? 's' : ''}`}
+                  desc="Revisá el estado de la flota en la sección Camiones"
                 />
               )}
             </div>
