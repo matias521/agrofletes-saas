@@ -1,0 +1,96 @@
+-- =====================================================
+-- AgroFletes SaaS — Supabase Schema
+-- Run this in the Supabase SQL editor to set up tables
+-- =====================================================
+
+-- ── Perfiles (extends auth.users) ──────────────────
+create table if not exists perfiles (
+  id uuid references auth.users on delete cascade primary key,
+  empresa_nombre text default 'Mi Empresa',
+  empresa_cuit   text,
+  empresa_ciudad text,
+  plan           text default 'Free',
+  created_at     timestamptz default now()
+);
+
+-- Auto-create perfil on signup
+create or replace function handle_new_user()
+returns trigger language plpgsql security definer as $$
+begin
+  insert into perfiles (id) values (new.id) on conflict do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure handle_new_user();
+
+-- ── Clientes ────────────────────────────────────────
+create table if not exists clientes (
+  id         uuid default gen_random_uuid() primary key,
+  user_id    uuid references auth.users on delete cascade not null,
+  razon      text not null,
+  alias      text not null,
+  cuit       text,
+  tel        text,
+  localidad  text,
+  activo     boolean default true,
+  rubro      text,
+  created_at timestamptz default now()
+);
+
+-- ── Camiones ────────────────────────────────────────
+create table if not exists camiones (
+  id         uuid default gen_random_uuid() primary key,
+  user_id    uuid references auth.users on delete cascade not null,
+  patente    text not null,
+  tipo       text not null,
+  marca      text,
+  modelo     text,
+  anio       integer,
+  chofer     text,
+  activo     boolean default true,
+  created_at timestamptz default now()
+);
+
+-- ── Viajes ──────────────────────────────────────────
+create table if not exists viajes (
+  id              uuid default gen_random_uuid() primary key,
+  numero          bigint generated always as identity,
+  user_id         uuid references auth.users on delete cascade not null,
+  fecha           date not null,
+  fecha_lleg      date,
+  cliente_id      uuid references clientes(id) on delete set null,
+  origen          text not null,
+  destino         text not null,
+  km              integer,
+  camion_id       uuid references camiones(id) on delete set null,
+  tipo_carga_id   text,
+  tipo_carga_label text,
+  toneladas       numeric(10,2),
+  monto           numeric(12,2),
+  estado          text default 'BORRADOR'
+                    check (estado in ('BORRADOR','EN_TRANSITO','ENTREGADO','LIQUIDADO','CANCELADO')),
+  docs            text[] default '{}',
+  notas           text,
+  created_at      timestamptz default now()
+);
+
+-- ── Row Level Security ──────────────────────────────
+alter table perfiles enable row level security;
+alter table clientes  enable row level security;
+alter table camiones  enable row level security;
+alter table viajes    enable row level security;
+
+-- Drop existing policies to avoid conflicts on re-run
+drop policy if exists "perfiles_own"   on perfiles;
+drop policy if exists "clientes_own"   on clientes;
+drop policy if exists "camiones_own"   on camiones;
+drop policy if exists "viajes_own"     on viajes;
+
+create policy "perfiles_own" on perfiles for all using (auth.uid() = id);
+create policy "clientes_own" on clientes for all using (auth.uid() = user_id);
+create policy "camiones_own" on camiones for all using (auth.uid() = user_id);
+create policy "viajes_own"   on viajes   for all using (auth.uid() = user_id);
