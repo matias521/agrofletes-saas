@@ -17,7 +17,7 @@ interface NavItemDef {
 
 const NAV_ITEMS: NavItemDef[] = [
   { key: 'inicio',        label: 'Inicio',         icon: 'home' },
-  { key: 'viajes',        label: 'Viajes',          icon: 'local_shipping', badge: '3' },
+  { key: 'viajes',        label: 'Viajes',          icon: 'local_shipping' },
   { key: 'clientes',      label: 'Clientes',        icon: 'groups' },
   { key: 'camiones',      label: 'Camiones',        icon: 'directions_car' },
 ]
