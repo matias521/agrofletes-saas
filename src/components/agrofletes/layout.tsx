@@ -30,10 +30,20 @@ const NAV_BOTTOM: NavItemDef[] = [
 function FeedbackModal({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState('')
   const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!text.trim()) return
-    // In a real app this would POST to an endpoint; for the prototype just acknowledge
+    setSending(true)
+    try {
+      await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+    } finally {
+      setSending(false)
+    }
     setSent(true)
     setTimeout(onClose, 1800)
   }
@@ -118,9 +128,9 @@ function FeedbackModal({ onClose }: { onClose: () => void }) {
               <button
                 className="btn btn-primary"
                 onClick={handleSubmit}
-                disabled={!text.trim()}
+                disabled={!text.trim() || sending}
               >
-                <Icon name="send" size={15} /> Enviar
+                <Icon name="send" size={15} /> {sending ? 'Enviando...' : 'Enviar'}
               </button>
             </div>
           </>

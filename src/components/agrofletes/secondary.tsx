@@ -1222,45 +1222,6 @@ export function ReportesPage() {
           </div>
         </div>
 
-        {/* Preview grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 20 }}>
-          <PreviewCard title="Rentabilidad por cliente" icon="groups" blurred>
-            <FakeBarsPreview bars={[0.6, 0.85, 0.45, 0.7, 0.9]} />
-          </PreviewCard>
-          <PreviewCard title="Distribución por tipo de carga" icon="scale" blurred>
-            <FakePiePreview />
-          </PreviewCard>
-          <PreviewCard title="Eficiencia de flota" icon="directions_car" blurred>
-            <FakeBarsPreview bars={[0.55, 0.75, 0.9, 0.6, 0.8, 0.4]} />
-          </PreviewCard>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
-          <PreviewCard title="Evolución mensual de toneladas" icon="trending_up" blurred>
-            <FakeTablePreview
-              headers={['Mes', 'Toneladas', 'Viajes', 'Facturación', 'Var. %']}
-              rows={[
-                ['Enero 2025', '1.240 tn', '42', '$ 5.2M', '+12%'],
-                ['Febrero 2025', '1.080 tn', '36', '$ 4.5M', '-8%'],
-                ['Marzo 2025', '1.530 tn', '51', '$ 6.4M', '+42%'],
-                ['Abril 2025', '1.410 tn', '47', '$ 5.9M', '-8%'],
-                ['Mayo 2025', '1.220 tn', '41', '$ 5.1M', '-13%'],
-              ]}
-            />
-          </PreviewCard>
-          <PreviewCard title="Top 5 clientes" icon="star" blurred>
-            <FakeTablePreview
-              headers={['Cliente', 'Fact.']}
-              rows={[
-                ['AgroExport CBA', '$ 27.6M'],
-                ['Cerealera Norte', '$ 21.8M'],
-                ['Los Robles', '$ 12.5M'],
-                ['Pampero', '$ 8.2M'],
-                ['Semillas PA', '$ 4.1M'],
-              ]}
-            />
-          </PreviewCard>
-        </div>
       </div>
     </div>
   )
