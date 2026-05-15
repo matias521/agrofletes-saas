@@ -424,20 +424,7 @@ function AppContent() {
         flexDirection: 'column',
         gap: 16,
       }}>
-        <div style={{
-          width: 44,
-          height: 44,
-          borderRadius: 12,
-          background: 'var(--af-green)',
-          display: 'grid',
-          placeItems: 'center',
-          fontFamily: 'var(--font-display)',
-          fontWeight: 800,
-          fontSize: 20,
-          color: '#fff',
-        }}>
-          A
-        </div>
+        <img src="/logo.svg" alt="AgroFletes" style={{ height: 60, width: 'auto' }} />
         <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Cargando...</div>
       </div>
     )
