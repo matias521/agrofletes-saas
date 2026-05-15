@@ -304,6 +304,18 @@ export interface NuevaUnidadData {
   volumenM3: string
   grainCert: GrainCert
   hasGps: boolean
+  // Acoplado
+  acopladoMarca: string
+  acopladoModelo: string
+  acopladoAnio: string
+  acopladoPesoMaxTon: string
+  acopladoLargo: string
+  acopladoAncho: string
+  acopladoAlto: string
+  // Certificaciones adicionales
+  catCert: boolean
+  rutaCert: boolean
+  haciendaCert: boolean
 }
 
 interface CamionesPageProps {
@@ -503,6 +515,16 @@ const EMPTY_UNIDAD: NuevaUnidadData = {
   volumenM3: '',
   grainCert: 'none',
   hasGps: false,
+  acopladoMarca: '',
+  acopladoModelo: '',
+  acopladoAnio: '',
+  acopladoPesoMaxTon: '',
+  acopladoLargo: '',
+  acopladoAncho: '',
+  acopladoAlto: '',
+  catCert: false,
+  rutaCert: false,
+  haciendaCert: false,
 }
 
 interface NuevaUnidadModalProps {
@@ -510,6 +532,13 @@ interface NuevaUnidadModalProps {
   onClose: () => void
   onSave: (data: NuevaUnidadData) => Promise<void>
 }
+
+// Tipos que muestran certificaciones de carretón (CAT + RUTA)
+const TIPOS_CARRETON: TipoCamion[] = ['carreton', 'camilla']
+// Tipos que muestran cert. hacienda (SENASA hacienda)
+const TIPOS_HACIENDA: TipoCamion[] = ['jaula_hacienda']
+// Tipos sin acoplado propio (unidad autoportante)
+const TIPOS_SIN_ACOPLADO: TipoCamion[] = ['chasis', 'hidrogua']
 
 function NuevaUnidadModal({ open, onClose, onSave }: NuevaUnidadModalProps) {
   const [data, setData] = useState<NuevaUnidadData>(EMPTY_UNIDAD)
@@ -655,35 +684,200 @@ function NuevaUnidadModal({ open, onClose, onSave }: NuevaUnidadModalProps) {
             </Field>
           </div>
 
-          {/* ── Sección 4: Certificaciones y equipamiento ── */}
+          {/* ── Sección 4: Datos del acoplado ── */}
+          {data.tipo && !TIPOS_SIN_ACOPLADO.includes(data.tipo as TipoCamion) && (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 16 }}>
+                Datos del acoplado / remolque
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: 16, marginBottom: 16 }}>
+                <Field label="Marca acoplado">
+                  <Input
+                    placeholder="Ej: Bañado, Agroinox..."
+                    value={data.acopladoMarca}
+                    onChange={(e) => set('acopladoMarca', e.target.value)}
+                  />
+                </Field>
+                <Field label="Modelo acoplado">
+                  <Input
+                    placeholder="Ej: Tolva 3 ejes..."
+                    value={data.acopladoModelo}
+                    onChange={(e) => set('acopladoModelo', e.target.value)}
+                  />
+                </Field>
+                <Field label="Año">
+                  <Input
+                    type="number"
+                    placeholder="Ej: 2018"
+                    min="1990"
+                    max="2030"
+                    value={data.acopladoAnio}
+                    onChange={(e) => set('acopladoAnio', e.target.value)}
+                  />
+                </Field>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16 }}>
+                <Field label="Tn máximas">
+                  <Input
+                    type="number"
+                    placeholder="Ej: 32"
+                    min="0"
+                    step="0.5"
+                    value={data.acopladoPesoMaxTon}
+                    onChange={(e) => set('acopladoPesoMaxTon', e.target.value)}
+                  />
+                </Field>
+                <Field label="Largo (m)">
+                  <Input
+                    type="number"
+                    placeholder="Ej: 14.5"
+                    min="0"
+                    step="0.1"
+                    value={data.acopladoLargo}
+                    onChange={(e) => set('acopladoLargo', e.target.value)}
+                  />
+                </Field>
+                <Field label="Ancho (m)">
+                  <Input
+                    type="number"
+                    placeholder="Ej: 2.6"
+                    min="0"
+                    step="0.05"
+                    value={data.acopladoAncho}
+                    onChange={(e) => set('acopladoAncho', e.target.value)}
+                  />
+                </Field>
+                <Field label="Alto (m)">
+                  <Input
+                    type="number"
+                    placeholder="Ej: 3.2"
+                    min="0"
+                    step="0.05"
+                    value={data.acopladoAlto}
+                    onChange={(e) => set('acopladoAlto', e.target.value)}
+                  />
+                </Field>
+              </div>
+            </div>
+          )}
+
+          {/* ── Sección 5: Certificaciones y equipamiento ── */}
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 16 }}>
               Certificaciones y equipamiento
             </div>
 
-            {/* Grain cert */}
-            <label className="field-label" style={{ marginBottom: 10, display: 'block' }}>Certificación de granos</label>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-              {GRAIN_CERT_OPTIONS.map((opt) => (
+            {/* Cert. carretón: CAT + RUTA */}
+            {data.tipo && TIPOS_CARRETON.includes(data.tipo as TipoCamion) && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                <label className="field-label" style={{ marginBottom: 4, display: 'block' }}>Habilitaciones de carretón</label>
+                {[
+                  { field: 'catCert' as const, label: 'CAT', desc: 'Certificado de Aptitud Técnica' },
+                  { field: 'rutaCert' as const, label: 'Permiso de Ruta', desc: 'Habilitación para circulación en rutas provinciales/nacionales' },
+                ].map(({ field, label, desc }) => (
+                  <div
+                    key={field}
+                    onClick={() => set(field, !data[field])}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      borderRadius: 10,
+                      border: `1.5px solid ${data[field] ? 'var(--af-green)' : 'var(--border-soft)'}`,
+                      background: data[field] ? 'var(--af-green-bg)' : '#fff',
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{desc}</div>
+                    </div>
+                    <div
+                      style={{
+                        width: 40, height: 22, borderRadius: 11,
+                        background: data[field] ? 'var(--af-green)' : 'var(--border-strong)',
+                        position: 'relative', transition: 'background 200ms', flexShrink: 0,
+                      }}
+                    >
+                      <div style={{
+                        width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                        position: 'absolute', top: 3, left: data[field] ? 21 : 3,
+                        transition: 'left 200ms', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Cert. hacienda */}
+            {data.tipo && TIPOS_HACIENDA.includes(data.tipo as TipoCamion) && (
+              <div style={{ marginBottom: 20 }}>
+                <label className="field-label" style={{ marginBottom: 10, display: 'block' }}>Certificación hacienda</label>
                 <div
-                  key={opt.value}
-                  onClick={() => set('grainCert', opt.value)}
+                  onClick={() => set('haciendaCert', !data.haciendaCert)}
                   style={{
-                    flex: 1,
-                    minWidth: 140,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     padding: '12px 16px',
                     borderRadius: 10,
-                    border: `1.5px solid ${data.grainCert === opt.value ? 'var(--af-green)' : 'var(--border-soft)'}`,
-                    background: data.grainCert === opt.value ? 'var(--af-green-bg)' : '#fff',
+                    border: `1.5px solid ${data.haciendaCert ? 'var(--af-green)' : 'var(--border-soft)'}`,
+                    background: data.haciendaCert ? 'var(--af-green-bg)' : '#fff',
                     cursor: 'pointer',
                     transition: 'all 150ms',
                   }}
                 >
-                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>{opt.label}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{opt.desc}</div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13 }}>SENASA Hacienda</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Habilitado para transporte de animales en pie</div>
+                  </div>
+                  <div
+                    style={{
+                      width: 40, height: 22, borderRadius: 11,
+                      background: data.haciendaCert ? 'var(--af-green)' : 'var(--border-strong)',
+                      position: 'relative', transition: 'background 200ms', flexShrink: 0,
+                    }}
+                  >
+                    <div style={{
+                      width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                      position: 'absolute', top: 3, left: data.haciendaCert ? 21 : 3,
+                      transition: 'left 200ms', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    }} />
+                  </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* Cert. granos (resto de tipos) */}
+            {(!data.tipo || (!TIPOS_CARRETON.includes(data.tipo as TipoCamion) && !TIPOS_HACIENDA.includes(data.tipo as TipoCamion))) && (
+              <>
+                <label className="field-label" style={{ marginBottom: 10, display: 'block' }}>Certificación de granos</label>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+                  {GRAIN_CERT_OPTIONS.map((opt) => (
+                    <div
+                      key={opt.value}
+                      onClick={() => set('grainCert', opt.value)}
+                      style={{
+                        flex: 1,
+                        minWidth: 140,
+                        padding: '12px 16px',
+                        borderRadius: 10,
+                        border: `1.5px solid ${data.grainCert === opt.value ? 'var(--af-green)' : 'var(--border-soft)'}`,
+                        background: data.grainCert === opt.value ? 'var(--af-green-bg)' : '#fff',
+                        cursor: 'pointer',
+                        transition: 'all 150ms',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2 }}>{opt.label}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{opt.desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
 
             {/* GPS toggle */}
             <div
@@ -796,12 +990,46 @@ function CamionDrawer({ camion, onClose }: CamionDrawerProps) {
           {camion.volumenM3 != null && (
             <DataRow label="Volumen" value={`${camion.volumenM3} m³`} />
           )}
-          {camion.grainCert && camion.grainCert !== 'none' && (
-            <DataRow
-              label="Cert. granos"
-              value={GRAIN_CERT_OPTIONS.find(o => o.value === camion.grainCert)?.label ?? '—'}
-            />
+
+          {/* Acoplado */}
+          {(camion.acopladoMarca || camion.acopladoModelo) && (
+            <>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.8, padding: '14px 0 6px' }}>
+                Acoplado / Remolque
+              </div>
+              <DataRow label="Marca / Modelo" value={`${camion.acopladoMarca ?? ''} ${camion.acopladoModelo ?? ''}`.trim() || '—'} />
+              {camion.acopladoAnio && camion.acopladoAnio > 0 && <DataRow label="Año" value={String(camion.acopladoAnio)} />}
+              {camion.acopladoPesoMaxTon != null && <DataRow label="Tn máximas" value={`${camion.acopladoPesoMaxTon} tn`} />}
+              {(camion.acopladoLargo || camion.acopladoAncho || camion.acopladoAlto) && (
+                <DataRow
+                  label="Medidas"
+                  value={[
+                    camion.acopladoLargo ? `${camion.acopladoLargo}m largo` : null,
+                    camion.acopladoAncho ? `${camion.acopladoAncho}m ancho` : null,
+                    camion.acopladoAlto  ? `${camion.acopladoAlto}m alto`  : null,
+                  ].filter(Boolean).join(' · ')}
+                />
+              )}
+            </>
           )}
+
+          {/* Certificaciones */}
+          {TIPOS_CARRETON.includes(camion.tipo as TipoCamion) ? (
+            <>
+              <DataRow label="CAT" value={camion.catCert ? 'Vigente' : 'Sin habilitación'} />
+              <DataRow label="Permiso de Ruta" value={camion.rutaCert ? 'Vigente' : 'Sin habilitación'} />
+            </>
+          ) : TIPOS_HACIENDA.includes(camion.tipo as TipoCamion) ? (
+            <DataRow label="SENASA Hacienda" value={camion.haciendaCert ? 'Habilitado' : 'Sin habilitación'} />
+          ) : (
+            camion.grainCert && camion.grainCert !== 'none' && (
+              <DataRow
+                label="Cert. granos"
+                value={GRAIN_CERT_OPTIONS.find(o => o.value === camion.grainCert)?.label ?? '—'}
+              />
+            )
+          )}
+
           <DataRow
             label="GPS"
             value={

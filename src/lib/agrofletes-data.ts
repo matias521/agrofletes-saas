@@ -31,6 +31,7 @@ export type TipoCamion =
   | 'camilla'
   | 'chasis'
   | 'hidrogua'
+  | 'jaula_hacienda'
 
 export type GrainCert = 'none' | 'senasa' | 'organic'
 
@@ -65,6 +66,18 @@ export interface Camion {
   grainCert?: GrainCert
   hasGps?: boolean
   kmAcumulados?: number
+  // Acoplado
+  acopladoMarca?: string
+  acopladoModelo?: string
+  acopladoAnio?: number
+  acopladoPesoMaxTon?: number | null
+  acopladoLargo?: number | null
+  acopladoAncho?: number | null
+  acopladoAlto?: number | null
+  // Certificaciones adicionales
+  catCert?: boolean
+  rutaCert?: boolean
+  haciendaCert?: boolean
 }
 
 export interface TimelineItem {
@@ -193,6 +206,7 @@ export const TIPOS_CAMION: Record<TipoCamion, { label: string; icon: string }> =
   camilla:       { label: 'Camilla',               icon: 'commute' },
   chasis:        { label: 'Chasis',                icon: 'directions_car' },
   hidrogua:      { label: 'Hidrogrúa',             icon: 'construction' },
+  jaula_hacienda: { label: 'Jaula p/ Hacienda',   icon: 'pets' },
 }
 
 export const GRAIN_CERT_OPTIONS: { value: GrainCert; label: string; desc: string }[] = [
