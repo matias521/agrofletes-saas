@@ -1439,9 +1439,57 @@ function FakeTablePreview({ headers, rows }: { headers: string[]; rows: string[]
 
 // ── ConfigPage ────────────────────────────────────────────────────────────────
 
+interface ConfigData {
+  empresaNombre: string
+  empresaCuit: string
+  empresaCiudad: string
+  userNombre: string
+  userEmail: string
+}
+
 export function ConfigPage() {
   const [tab, setTab] = useState('empresa')
   const { showToast } = useToast()
+  const [configData, setConfigData] = useState<ConfigData | null>(null)
+
+  useEffect(() => {
+    const load = async () => {
+      const { createClient: mkClient } = await import('@/lib/supabase')
+      const supabase = mkClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: perfil } = await supabase.from('perfiles').select('*').eq('id', user.id).single()
+      const meta = user.user_metadata ?? {}
+      setConfigData({
+        empresaNombre: perfil?.empresa_nombre && perfil.empresa_nombre !== 'Mi Empresa'
+          ? perfil.empresa_nombre
+          : (meta.empresa_nombre ?? ''),
+        empresaCuit: perfil?.empresa_cuit ?? '',
+        empresaCiudad: perfil?.empresa_ciudad ?? '',
+        userNombre: meta.nombre_completo ?? '',
+        userEmail: user.email ?? '',
+      })
+    }
+    load()
+  }, [])
+
+  async function handleSaveEmpresa(data: { nombre: string; cuit: string; ciudad: string }) {
+    const { createClient: mkClient } = await import('@/lib/supabase')
+    const supabase = mkClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { error } = await supabase.from('perfiles').update({
+      empresa_nombre: data.nombre,
+      empresa_cuit: data.cuit,
+      empresa_ciudad: data.ciudad,
+    }).eq('id', user.id)
+    if (!error) {
+      setConfigData((prev) => prev ? { ...prev, empresaNombre: data.nombre, empresaCuit: data.cuit, empresaCiudad: data.ciudad } : prev)
+      showToast('Cambios guardados')
+    } else {
+      showToast('Error al guardar: ' + error.message)
+    }
+  }
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -1464,8 +1512,8 @@ export function ConfigPage() {
       </div>
 
       <div className="page-body" style={{ flex: 1, overflowY: 'auto' }}>
-        {tab === 'empresa' && <EmpresaTab onSave={() => showToast('Cambios guardados')} />}
-        {tab === 'usuarios' && <UsuariosTab />}
+        {tab === 'empresa' && <EmpresaTab data={configData} onSave={handleSaveEmpresa} />}
+        {tab === 'usuarios' && <UsuariosTab data={configData} />}
         {tab === 'plan' && <PlanTab />}
       </div>
     </div>
@@ -1474,12 +1522,27 @@ export function ConfigPage() {
 
 // ── Config sub-tabs ───────────────────────────────────────────────────────────
 
-function EmpresaTab({ onSave }: { onSave: () => void }) {
-  const [nombre, setNombre] = useState('Transportes El Ombú S.R.L.')
-  const [cuit, setCuit] = useState('30-71234567-8')
-  const [email, setEmail] = useState('admin@elombu.com.ar')
-  const [tel, setTel] = useState('+54 9 11 1234-5678')
-  const [dir, setDir] = useState('Av. del Libertador 1234, CABA')
+function EmpresaTab({ data, onSave }: { data: ConfigData | null; onSave: (d: { nombre: string; cuit: string; ciudad: string }) => Promise<void> }) {
+  const [nombre, setNombre] = useState('')
+  const [cuit, setCuit] = useState('')
+  const [ciudad, setCiudad] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (data) {
+      setNombre(data.empresaNombre)
+      setCuit(data.empresaCuit)
+      setCiudad(data.empresaCiudad)
+    }
+  }, [data])
+
+  async function handleSave() {
+    setSaving(true)
+    await onSave({ nombre, cuit, ciudad })
+    setSaving(false)
+  }
+
+  if (!data) return <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 14 }}>Cargando...</div>
 
   return (
     <div style={{ maxWidth: 640, display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -1490,24 +1553,18 @@ function EmpresaTab({ onSave }: { onSave: () => void }) {
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Razón social">
-              <Input value={nombre} onChange={(e) => setNombre(e.target.value)} />
+              <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre de la empresa" />
             </Field>
             <Field label="CUIT">
-              <Input value={cuit} onChange={(e) => setCuit(e.target.value)} />
-            </Field>
-            <Field label="Email de contacto">
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </Field>
-            <Field label="Teléfono">
-              <Input value={tel} onChange={(e) => setTel(e.target.value)} />
+              <Input value={cuit} onChange={(e) => setCuit(e.target.value)} placeholder="30-00000000-0" />
             </Field>
           </div>
-          <Field label="Dirección fiscal">
-            <Input value={dir} onChange={(e) => setDir(e.target.value)} />
+          <Field label="Ciudad">
+            <Input value={ciudad} onChange={(e) => setCiudad(e.target.value)} placeholder="Ciudad, Provincia" />
           </Field>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="primary" onClick={onSave}>
-              Guardar cambios
+            <Button variant="primary" onClick={handleSave} disabled={saving}>
+              {saving ? 'Guardando...' : 'Guardar cambios'}
             </Button>
           </div>
         </div>
@@ -1516,10 +1573,15 @@ function EmpresaTab({ onSave }: { onSave: () => void }) {
   )
 }
 
-function UsuariosTab() {
+function UsuariosTab({ data }: { data: ConfigData | null }) {
+  if (!data) return <div style={{ padding: 32, color: 'var(--text-tertiary)', fontSize: 14 }}>Cargando...</div>
+
+  const initials = data.userNombre
+    ? data.userNombre.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+    : data.userEmail.slice(0, 2).toUpperCase()
+
   const users = [
-    { name: 'Matías Bejegaleroux', email: 'matias@elombu.com.ar', role: 'Admin', initials: 'MB' },
-    { name: 'Laura Fernández',     email: 'laura@elombu.com.ar',  role: 'Operador', initials: 'LF' },
+    { name: data.userNombre || data.userEmail, email: data.userEmail, role: 'Admin', initials },
   ]
 
   return (
@@ -1527,9 +1589,6 @@ function UsuariosTab() {
       <div className="card">
         <div className="card-header">
           <h3>Usuarios del equipo</h3>
-          <Button variant="primary" size="sm" icon="person_add">
-            Invitar usuario
-          </Button>
         </div>
         <div className="card-body" style={{ padding: 0 }}>
           {users.map((u) => (
