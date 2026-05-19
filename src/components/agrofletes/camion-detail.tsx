@@ -27,6 +27,7 @@ import {
   formatTon,
 } from '@/lib/agrofletes-data'
 import { parseDocumentoPdf } from '@/lib/parse-poliza-pdf'
+import { NuevaUnidadModal, NuevaUnidadData } from './secondary'
 
 // ── Expiry badge ──────────────────────────────────────────────────────────────
 
@@ -1709,12 +1710,39 @@ interface CamionDetailPageProps {
   onDeleteDoc: (docId: string) => Promise<void>
   onAddTaller: (camionId: string, data: NuevaTallerVisitaData) => Promise<void>
   onSaveChofer: (camionId: string, data: NuevoChoferData) => Promise<void>
+  onEditarCamion: (camionId: string, data: NuevaUnidadData) => Promise<void>
 }
 
 export type { NuevoDocData }
 
-export function CamionDetailPage({ camion, viajes, clientes, detailData, loading = false, onBack, onViewViaje, onSetTires, onAddDoc, onDeleteDoc, onAddTaller, onSaveChofer }: CamionDetailPageProps) {
+function camionToFormData(c: Camion): NuevaUnidadData {
+  return {
+    patente: c.patente,
+    tipo: c.tipo as NuevaUnidadData['tipo'],
+    marca: c.marca,
+    modelo: c.modelo,
+    anio: c.anio > 0 ? String(c.anio) : '',
+    chofer: c.chofer === 'Sin asignar' ? '' : c.chofer,
+    pesoMaxTon: c.pesoMaxTon != null ? String(c.pesoMaxTon) : '',
+    volumenM3: c.volumenM3 != null ? String(c.volumenM3) : '',
+    grainCert: c.grainCert ?? 'none',
+    hasGps: c.hasGps ?? false,
+    acopladoMarca: c.acopladoMarca ?? '',
+    acopladoModelo: c.acopladoModelo ?? '',
+    acopladoAnio: c.acopladoAnio != null ? String(c.acopladoAnio) : '',
+    acopladoPesoMaxTon: c.acopladoPesoMaxTon != null ? String(c.acopladoPesoMaxTon) : '',
+    acopladoLargo: c.acopladoLargo != null ? String(c.acopladoLargo) : '',
+    acopladoAncho: c.acopladoAncho != null ? String(c.acopladoAncho) : '',
+    acopladoAlto: c.acopladoAlto != null ? String(c.acopladoAlto) : '',
+    catCert: c.catCert ?? false,
+    rutaCert: c.rutaCert ?? false,
+    haciendaCert: c.haciendaCert ?? false,
+  }
+}
+
+export function CamionDetailPage({ camion, viajes, clientes, detailData, loading = false, onBack, onViewViaje, onSetTires, onAddDoc, onDeleteDoc, onAddTaller, onSaveChofer, onEditarCamion }: CamionDetailPageProps) {
   const [tab, setTab] = useState('dashboard')
+  const [editModalOpen, setEditModalOpen] = useState(false)
   const { chofer, docs, taller, tires } = detailData
 
   useEffect(() => { setTab('dashboard') }, [camion.id])
@@ -1749,7 +1777,7 @@ export function CamionDetailPage({ camion, viajes, clientes, detailData, loading
           <p>{tipoInfo.label} · {camion.marca} {camion.modelo} {camion.anio > 0 ? `· ${camion.anio}` : ''}{chofer ? ` · Chofer ${chofer.nombre}` : ''}</p>
         </div>
         <div className="actions">
-          <Button variant="secondary" icon="edit">Editar</Button>
+          <Button variant="secondary" icon="edit" onClick={() => setEditModalOpen(true)}>Editar</Button>
           <Button variant="secondary" icon="picture_as_pdf">Ficha técnica</Button>
         </div>
       </div>
@@ -1785,6 +1813,16 @@ export function CamionDetailPage({ camion, viajes, clientes, detailData, loading
           </>
         )}
       </div>
+
+      <NuevaUnidadModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        initialData={camionToFormData(camion)}
+        onSave={async (data) => {
+          await onEditarCamion(camion.id, data)
+          setEditModalOpen(false)
+        }}
+      />
     </>
   )
 }

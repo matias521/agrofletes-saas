@@ -284,6 +284,30 @@ function AppContent() {
     }
   }, [user, showToast])
 
+  const handleEditarCamion = useCallback(async (camionId: string, data: NuevaUnidadData) => {
+    const supabase = createClient()
+    const { data: row, error } = await supabase.from('camiones').update({
+      patente: data.patente.trim(),
+      tipo: data.tipo,
+      marca: data.marca || null,
+      modelo: data.modelo || null,
+      anio: parseInt(data.anio) || null,
+      chofer: data.chofer || null,
+      peso_max_ton: parseFloat(data.pesoMaxTon) || null,
+      volumen_m3: parseFloat(data.volumenM3) || null,
+      grain_cert: data.grainCert,
+      has_gps: data.hasGps,
+    }).eq('id', camionId).select().single()
+    if (row) {
+      const updated = camionFromDB(row)
+      setCamiones((prev) => prev.map((c) => c.id === camionId ? { ...updated, viajes: c.viajes } : c))
+      setOpenCamion((prev) => prev ? { ...updated, viajes: prev.viajes } : prev)
+      showToast(`Unidad ${row.patente} actualizada.`)
+    } else if (error) {
+      showToast(`Error al guardar: ${error.message}`)
+    }
+  }, [showToast])
+
   const handleNuevoCliente = useCallback(async (data: NuevoClienteData) => {
     const supabase = createClient()
     const { data: row, error } = await supabase.from('clientes').insert({
@@ -494,6 +518,7 @@ function AppContent() {
           onDeleteDoc={handleDeleteDoc}
           onAddTaller={handleAddTaller}
           onSaveChofer={handleSaveChofer}
+          onEditarCamion={handleEditarCamion}
         />
       )
     }

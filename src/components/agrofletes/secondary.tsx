@@ -627,6 +627,7 @@ interface NuevaUnidadModalProps {
   open: boolean
   onClose: () => void
   onSave: (data: NuevaUnidadData) => Promise<void>
+  initialData?: NuevaUnidadData
 }
 
 // Tipos que muestran certificaciones de carretón (CAT + RUTA)
@@ -636,10 +637,15 @@ const TIPOS_HACIENDA: TipoCamion[] = ['jaula_hacienda']
 // Tipos sin acoplado propio (unidad autoportante)
 const TIPOS_SIN_ACOPLADO: TipoCamion[] = ['chasis', 'hidrogua']
 
-function NuevaUnidadModal({ open, onClose, onSave }: NuevaUnidadModalProps) {
+export function NuevaUnidadModal({ open, onClose, onSave, initialData }: NuevaUnidadModalProps) {
   const [data, setData] = useState<NuevaUnidadData>(EMPTY_UNIDAD)
   const [saving, setSaving] = useState(false)
   const tipoKeys = Object.keys(TIPOS_CAMION) as TipoCamion[]
+  const isEditing = !!initialData
+
+  useEffect(() => {
+    if (open) setData(initialData ?? EMPTY_UNIDAD)
+  }, [open])
 
   function set<K extends keyof NuevaUnidadData>(field: K, value: NuevaUnidadData[K]) {
     setData((prev) => ({ ...prev, [field]: value }))
@@ -669,7 +675,7 @@ function NuevaUnidadModal({ open, onClose, onSave }: NuevaUnidadModalProps) {
       <div className="modal modal-wide" onMouseDown={(e) => e.stopPropagation()}>
         {/* Head */}
         <div className="modal-head">
-          <h2>Nueva unidad de flota</h2>
+          <h2>{isEditing ? 'Editar unidad' : 'Nueva unidad de flota'}</h2>
           <Button variant="ghost" size="sm" icon="close" onClick={handleClose} />
         </div>
 
@@ -1036,7 +1042,7 @@ function NuevaUnidadModal({ open, onClose, onSave }: NuevaUnidadModalProps) {
             disabled={!canSave || saving}
             onClick={handleSave}
           >
-            {saving ? 'Guardando...' : 'Guardar unidad'}
+            {saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Guardar unidad'}
           </Button>
         </div>
       </div>
