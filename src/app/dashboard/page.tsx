@@ -387,9 +387,12 @@ function AppContent() {
     if (data.file) {
       const path = `${user!.id}/${camionId}/${Date.now()}_${data.file.name}`
       const { data: uploaded, error: uploadError } = await supabase.storage.from('camion-docs').upload(path, data.file)
-      if (uploadError) { showToast(`Error al subir archivo: ${uploadError.message}`); return }
-      const { data: urlData } = supabase.storage.from('camion-docs').getPublicUrl(uploaded.path)
-      archivoUrl = urlData.publicUrl
+      if (uploadError) {
+        showToast(`No se pudo adjuntar el archivo: ${uploadError.message}`)
+      } else {
+        const { data: urlData } = supabase.storage.from('camion-docs').getPublicUrl(uploaded.path)
+        archivoUrl = urlData.publicUrl
+      }
     }
     const { data: row, error } = await supabase.from('camion_docs').insert({
       user_id: user!.id,
@@ -466,6 +469,34 @@ function AppContent() {
     }
   }, [user, showToast])
 
+  const handleEditTaller = useCallback(async (camionId: string, visitaId: string, data: NuevaTallerVisitaData) => {
+    const supabase = createClient()
+    const { data: row, error } = await supabase.from('camion_taller').update({
+      fecha: data.fecha,
+      taller: data.taller || null,
+      motivo: data.motivo,
+      trabajos: data.trabajos,
+      costo: data.costo,
+      km: data.km,
+      prox_km: data.proxKm,
+      notas: data.notas || null,
+    }).eq('id', visitaId).select().single()
+    if (row) {
+      setCamionDetail((prev) => ({ ...prev, taller: prev.taller.map((v) => v.id === visitaId ? tallerVisitaFromDB(row) : v) }))
+      showToast('Visita actualizada.')
+    } else if (error) {
+      showToast(`Error: ${error.message}`)
+    }
+  }, [showToast])
+
+  const handleDeleteTaller = useCallback(async (visitaId: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('camion_taller').delete().eq('id', visitaId)
+    if (error) { showToast(`Error: ${error.message}`); return }
+    setCamionDetail((prev) => ({ ...prev, taller: prev.taller.filter((v) => v.id !== visitaId) }))
+    showToast('Visita eliminada.')
+  }, [showToast])
+
   const handleLogout = useCallback(async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -517,6 +548,8 @@ function AppContent() {
           onAddDoc={handleAddDoc}
           onDeleteDoc={handleDeleteDoc}
           onAddTaller={handleAddTaller}
+          onEditTaller={handleEditTaller}
+          onDeleteTaller={handleDeleteTaller}
           onSaveChofer={handleSaveChofer}
           onEditarCamion={handleEditarCamion}
         />

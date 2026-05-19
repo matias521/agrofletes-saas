@@ -696,6 +696,7 @@ export interface TallerVisita {
   trabajos: string[]
   costo: number
   proxKm: number
+  notas: string
 }
 
 export interface Neumatico {
@@ -1013,6 +1014,7 @@ export function tallerVisitaFromDB(row: TallerVisitaDB): TallerVisita {
     trabajos: row.trabajos ?? [],
     costo: row.costo ?? 0,
     proxKm: row.prox_km ?? 0,
+    notas: row.notas ?? '',
   }
 }
 

@@ -909,21 +909,22 @@ export interface NuevaTallerVisitaData {
   notas: string
 }
 
-function NuevaTallerVisitaModal({ camion, onClose, onSave }: {
+function NuevaTallerVisitaModal({ camion, onClose, onSave, editVisita }: {
   camion: Camion
   onClose: () => void
   onSave: (data: NuevaTallerVisitaData) => Promise<void>
+  editVisita?: TallerVisita
 }) {
   const today = new Date().toISOString().slice(0, 10)
-  const [fecha, setFecha] = useState(today)
-  const [taller, setTaller] = useState('')
-  const [motivo, setMotivo] = useState<'preventivo' | 'correctivo'>('preventivo')
-  const [trabajos, setTrabajos] = useState<string[]>([])
+  const [fecha, setFecha] = useState(editVisita?.fecha ?? today)
+  const [taller, setTaller] = useState(editVisita?.taller ?? '')
+  const [motivo, setMotivo] = useState<'preventivo' | 'correctivo'>(editVisita?.motivo ?? 'preventivo')
+  const [trabajos, setTrabajos] = useState<string[]>(editVisita?.trabajos ?? [])
   const [trabajoInput, setTrabajoInput] = useState('')
-  const [costo, setCosto] = useState('')
-  const [km, setKm] = useState(camion.kmAcumulados != null && camion.kmAcumulados > 0 ? String(camion.kmAcumulados) : '')
-  const [proxKm, setProxKm] = useState('')
-  const [notas, setNotas] = useState('')
+  const [costo, setCosto] = useState(editVisita?.costo ? String(editVisita.costo) : '')
+  const [km, setKm] = useState(editVisita?.km ? String(editVisita.km) : (camion.kmAcumulados != null && camion.kmAcumulados > 0 ? String(camion.kmAcumulados) : ''))
+  const [proxKm, setProxKm] = useState(editVisita?.proxKm ? String(editVisita.proxKm) : '')
+  const [notas, setNotas] = useState(editVisita?.notas ?? '')
   const [saving, setSaving] = useState(false)
 
   function addTrabajo() {
@@ -972,7 +973,7 @@ function NuevaTallerVisitaModal({ camion, onClose, onSave }: {
               <Icon name="build" size={20} />
             </div>
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>Registrar visita al taller</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>{editVisita ? 'Editar visita al taller' : 'Registrar visita al taller'}</div>
               <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>{camion.patente}</div>
             </div>
           </div>
@@ -1162,7 +1163,7 @@ function NuevaTallerVisitaModal({ camion, onClose, onSave }: {
               disabled={saving || !canSave}
             >
               <Icon name="save" size={15} />
-              {saving ? 'Guardando...' : 'Registrar visita'}
+              {saving ? 'Guardando...' : editVisita ? 'Guardar cambios' : 'Registrar visita'}
             </button>
           </div>
         </div>
@@ -1173,16 +1174,52 @@ function NuevaTallerVisitaModal({ camion, onClose, onSave }: {
 
 // ── TALLER TAB ────────────────────────────────────────────────────────────────
 
-function CamTallerTab({ taller, camion, onAddTaller }: { taller: TallerVisita[]; camion: Camion; onAddTaller: (data: NuevaTallerVisitaData) => Promise<void> }) {
+function CamTallerTab({ taller, camion, onAddTaller, onEditTaller, onDeleteTaller }: {
+  taller: TallerVisita[]
+  camion: Camion
+  onAddTaller: (data: NuevaTallerVisitaData) => Promise<void>
+  onEditTaller: (visitaId: string, data: NuevaTallerVisitaData) => Promise<void>
+  onDeleteTaller: (visitaId: string) => Promise<void>
+}) {
   const [modalOpen, setModalOpen] = useState(false)
+  const [editingVisita, setEditingVisita] = useState<TallerVisita | null>(null)
   const km = camion.kmAcumulados ?? 0
   const proxima = taller[0]?.proxKm ?? null
   const kmRestantes = proxima != null ? proxima - km : null
   const totalGasto = taller.reduce((s, v) => s + v.costo, 0)
 
+  function handleOpenEdit(v: TallerVisita) {
+    setEditingVisita(v)
+    setModalOpen(true)
+  }
+
+  function handleCloseModal() {
+    setModalOpen(false)
+    setEditingVisita(null)
+  }
+
+  async function handleDelete(visitaId: string) {
+    if (!confirm('¿Eliminar esta visita?')) return
+    await onDeleteTaller(visitaId)
+  }
+
   return (
     <>
-      {modalOpen && <NuevaTallerVisitaModal camion={camion} onClose={() => setModalOpen(false)} onSave={onAddTaller} />}
+      {modalOpen && (
+        <NuevaTallerVisitaModal
+          camion={camion}
+          onClose={handleCloseModal}
+          editVisita={editingVisita ?? undefined}
+          onSave={async (data) => {
+            if (editingVisita) {
+              await onEditTaller(editingVisita.id, data)
+            } else {
+              await onAddTaller(data)
+            }
+            handleCloseModal()
+          }}
+        />
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
         <MetricCard label="Visitas registradas" value={String(taller.length)} icon="build" />
@@ -1222,9 +1259,15 @@ function CamTallerTab({ taller, camion, onAddTaller }: { taller: TallerVisita[];
                           {v.taller} · <span style={{ fontFamily: 'var(--font-mono)' }}>@ {formatKm(v.km)}</span>
                         </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{formatMoney(v.costo)}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Próx: {formatKm(v.proxKm)}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{formatMoney(v.costo)}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Próx: {formatKm(v.proxKm)}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button className="btn btn-ghost btn-icon btn-sm" title="Editar" onClick={() => handleOpenEdit(v)}><Icon name="edit" size={15} /></button>
+                          <button className="btn btn-ghost btn-icon btn-sm" title="Eliminar" onClick={() => handleDelete(v.id)} style={{ color: 'var(--st-cancelado-fg)' }}><Icon name="delete" size={15} /></button>
+                        </div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
@@ -1438,6 +1481,37 @@ function TireDetailPanel({ tire, onChange, onReplace }: { tire: Neumatico; onCha
 
 // ── Tire first-load form ──────────────────────────────────────────────────────
 
+type GroupValue = { marca: string; modelo: string; vidaUtil: number; kmRecorridos: number }
+
+function GroupRow({ title, count, value, onChange: onChg, helper, models }: { title: string; count: number; value: GroupValue; onChange: (v: GroupValue) => void; helper: string; models: string[] }) {
+  if (count === 0) return null
+  return (
+    <div style={{ border: '1px solid var(--border-soft)', borderRadius: 10, padding: 16, background: 'var(--surface-card)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+        <div>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15 }}>{title}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{helper}</div>
+        </div>
+        <span className="badge" style={{ background: 'var(--af-green-bg)', color: 'var(--af-green-press)' }}>{count} unidades</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 1fr 1fr', gap: 10 }}>
+        <Field label="Marca">
+          <SelectInput options={TIRE_BRANDS.map((b) => ({ value: b, label: b }))} value={value.marca} onChange={(e) => onChg({ ...value, marca: e.target.value })} />
+        </Field>
+        <Field label="Modelo">
+          <SelectInput options={models.map((m) => ({ value: m, label: m }))} value={value.modelo} onChange={(e) => onChg({ ...value, modelo: e.target.value })} />
+        </Field>
+        <Field label="Vida útil (km)">
+          <Input type="number" value={String(value.vidaUtil)} onChange={(e) => onChg({ ...value, vidaUtil: Number(e.target.value) })} style={{ fontFamily: 'var(--font-mono)' }} />
+        </Field>
+        <Field label="Km ya recorridos">
+          <Input type="number" value={String(value.kmRecorridos)} onChange={(e) => onChg({ ...value, kmRecorridos: Number(e.target.value) })} style={{ fontFamily: 'var(--font-mono)' }} placeholder="0" />
+        </Field>
+      </div>
+    </div>
+  )
+}
+
 function TireFirstLoadForm({ camion, onCreate, onCancel }: { camion: Camion; onCreate: (tires: Neumatico[]) => void; onCancel: () => void }) {
   const positions = useMemo(() => tirePositionsFor(camion.tipo), [camion.tipo])
   const groups = useMemo(() => ({
@@ -1450,9 +1524,9 @@ function TireFirstLoadForm({ camion, onCreate, onCancel }: { camion: Camion; onC
   const [kmCamion, setKmCamion] = useState(camion.kmAcumulados ?? 0)
   const [medida, setMedida] = useState('295/80R22.5')
   const [fechaInst, setFechaInst] = useState(todayISO)
-  const [steer,   setSteer]   = useState({ marca: 'Goodyear',    modelo: 'KMAX S', vidaUtil: 100000 })
-  const [drive,   setDrive]   = useState({ marca: 'Goodyear',    modelo: 'KMAX D', vidaUtil: 120000 })
-  const [trailer, setTrailer] = useState({ marca: 'Bridgestone', modelo: 'R168',   vidaUtil: 150000 })
+  const [steer,   setSteer]   = useState({ marca: 'Goodyear',    modelo: 'KMAX S', vidaUtil: 100000, kmRecorridos: 0 })
+  const [drive,   setDrive]   = useState({ marca: 'Goodyear',    modelo: 'KMAX D', vidaUtil: 120000, kmRecorridos: 0 })
+  const [trailer, setTrailer] = useState({ marca: 'Bridgestone', modelo: 'R168',   vidaUtil: 150000, kmRecorridos: 0 })
   const totalCount = positions.length
 
   function submit() {
@@ -1462,38 +1536,12 @@ function TireFirstLoadForm({ camion, onCreate, onCancel }: { camion: Camion; onC
       return {
         code: p.code, camionId: camion.id,
         marca: g.marca, modelo: g.modelo, medida,
-        kmInicial: kmCamion, kmActual: kmCamion,
+        kmInicial: Math.max(0, kmCamion - g.kmRecorridos), kmActual: kmCamion,
         vidaUtilEsperada: g.vidaUtil, fechaInst,
         seg: p.seg, axle: p.axle, side: p.side, inner: p.inner, role: p.role,
       }
     })
     onCreate(tires)
-  }
-
-  function GroupRow({ title, count, value, onChange: onChg, helper, models }: { title: string; count: number; value: { marca: string; modelo: string; vidaUtil: number }; onChange: (v: typeof value) => void; helper: string; models: string[] }) {
-    if (count === 0) return null
-    return (
-      <div style={{ border: '1px solid var(--border-soft)', borderRadius: 10, padding: 16, background: 'var(--surface-card)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15 }}>{title}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{helper}</div>
-          </div>
-          <span className="badge" style={{ background: 'var(--af-green-bg)', color: 'var(--af-green-press)' }}>{count} unidades</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 1fr', gap: 10 }}>
-          <Field label="Marca">
-            <SelectInput options={TIRE_BRANDS.map((b) => ({ value: b, label: b }))} value={value.marca} onChange={(e) => onChg({ ...value, marca: e.target.value })} />
-          </Field>
-          <Field label="Modelo">
-            <SelectInput options={models.map((m) => ({ value: m, label: m }))} value={value.modelo} onChange={(e) => onChg({ ...value, modelo: e.target.value })} />
-          </Field>
-          <Field label="Vida útil (km)">
-            <Input type="number" value={String(value.vidaUtil)} onChange={(e) => onChg({ ...value, vidaUtil: Number(e.target.value) })} style={{ fontFamily: 'var(--font-mono)' }} />
-          </Field>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -1709,6 +1757,8 @@ interface CamionDetailPageProps {
   onAddDoc: (camionId: string, data: NuevoDocData) => Promise<void>
   onDeleteDoc: (docId: string) => Promise<void>
   onAddTaller: (camionId: string, data: NuevaTallerVisitaData) => Promise<void>
+  onEditTaller: (camionId: string, visitaId: string, data: NuevaTallerVisitaData) => Promise<void>
+  onDeleteTaller: (visitaId: string) => Promise<void>
   onSaveChofer: (camionId: string, data: NuevoChoferData) => Promise<void>
   onEditarCamion: (camionId: string, data: NuevaUnidadData) => Promise<void>
 }
@@ -1740,7 +1790,7 @@ function camionToFormData(c: Camion): NuevaUnidadData {
   }
 }
 
-export function CamionDetailPage({ camion, viajes, clientes, detailData, loading = false, onBack, onViewViaje, onSetTires, onAddDoc, onDeleteDoc, onAddTaller, onSaveChofer, onEditarCamion }: CamionDetailPageProps) {
+export function CamionDetailPage({ camion, viajes, clientes, detailData, loading = false, onBack, onViewViaje, onSetTires, onAddDoc, onDeleteDoc, onAddTaller, onEditTaller, onDeleteTaller, onSaveChofer, onEditarCamion }: CamionDetailPageProps) {
   const [tab, setTab] = useState('dashboard')
   const [editModalOpen, setEditModalOpen] = useState(false)
   const { chofer, docs, taller, tires } = detailData
@@ -1807,7 +1857,7 @@ export function CamionDetailPage({ camion, viajes, clientes, detailData, loading
               {tab === 'viajes'     && <CamViajesTab viajes={camionViajes} clientes={clientes} onViewViaje={onViewViaje} />}
               {tab === 'documentos' && <CamDocumentosTab docs={docs} onAddDoc={(data) => onAddDoc(camion.id, data)} onDeleteDoc={onDeleteDoc} />}
               {tab === 'chofer'     && <CamChoferTab chofer={chofer} camion={camion} onSaveChofer={(data) => onSaveChofer(camion.id, data)} />}
-              {tab === 'taller'     && <CamTallerTab taller={taller} camion={camion} onAddTaller={(data) => onAddTaller(camion.id, data)} />}
+              {tab === 'taller'     && <CamTallerTab taller={taller} camion={camion} onAddTaller={(data) => onAddTaller(camion.id, data)} onEditTaller={(visitaId, data) => onEditTaller(camion.id, visitaId, data)} onDeleteTaller={onDeleteTaller} />}
               {tab === 'neumaticos' && <CamNeumaticosTab camion={camion} tires={tires} onSetTires={onSetTires} />}
             </div>
           </>
