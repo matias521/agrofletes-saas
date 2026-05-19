@@ -472,33 +472,55 @@ export function TripDetailPage({ viaje, clientes, camiones, onBack, onUpdateEsta
             justifyContent: 'space-between',
             marginBottom: 24,
             gap: 16,
+            paddingRight: 104,
           }}
         >
-          <div>
-            <div
-              style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, letterSpacing: -0.3 }}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button
+              onClick={onBack}
+              title="Volver"
+              style={{
+                background: 'var(--surface-card)',
+                border: '1px solid var(--border-soft)',
+                borderRadius: 8,
+                width: 36,
+                height: 36,
+                display: 'grid',
+                placeItems: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-secondary)',
+                flexShrink: 0,
+                boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+              }}
             >
-              Viaje #{viaje.numero}
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
-              {formatDateLong(viaje.fecha)} · {viaje.origen} → {viaje.destino}
+              <Icon name="arrow_back" size={20} />
+            </button>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div
+                  style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, letterSpacing: -0.3 }}
+                >
+                  Viaje #{viaje.numero}
+                </div>
+                <StatusBadge estado={viaje.estado} />
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
+                {formatDateLong(viaje.fecha)} · {viaje.origen} → {viaje.destino}
+              </div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <StatusBadge estado={viaje.estado} />
-            {next && (
-              <Button
-                variant="primary"
-                icon="arrow_forward"
-                onClick={() => {
-                  onUpdateEstado(viaje.id, next)
-                  showToast(`Estado actualizado a ${ESTADOS[next].label}`)
-                }}
-              >
-                Avanzar a {ESTADOS[next].label}
-              </Button>
-            )}
-          </div>
+          {next && (
+            <Button
+              variant="primary"
+              icon="arrow_forward"
+              onClick={() => {
+                onUpdateEstado(viaje.id, next)
+                showToast(`Estado actualizado a ${ESTADOS[next].label}`)
+              }}
+            >
+              Avanzar a {ESTADOS[next].label}
+            </Button>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20 }}>
