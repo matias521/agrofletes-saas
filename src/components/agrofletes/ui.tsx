@@ -340,6 +340,7 @@ interface TabDef {
   key: string
   label: string
   icon?: string
+  dot?: boolean
 }
 
 interface TabsProps {
@@ -382,7 +383,16 @@ export function Tabs({ tabs, active, onChange, style }: TabsProps) {
           }}
         >
           {t.icon && <Icon name={t.icon} size={16} />}
-          {t.label}
+          <span style={{ position: 'relative' }}>
+            {t.label}
+            {t.dot && (
+              <span style={{
+                position: 'absolute', top: -4, right: -8,
+                width: 7, height: 7, borderRadius: '50%',
+                background: '#F57C00', border: '1.5px solid #fff',
+              }} />
+            )}
+          </span>
         </button>
       ))}
     </div>

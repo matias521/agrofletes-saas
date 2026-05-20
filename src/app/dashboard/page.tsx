@@ -84,16 +84,20 @@ function AppContent() {
         viajes: mappedViajes.filter(v => v.clienteId === c.id).length,
         facturado: mappedViajes.filter(v => v.clienteId === c.id).reduce((s, v) => s + v.monto, 0),
       }))
-      const camionesWithStats = mappedCamiones.map(c => ({
-        ...c,
-        viajes: mappedViajes.filter(v => v.camionId === c.id).length,
-      }))
-
       // Load fleet alerts (docs + chofer docs)
       const [{ data: allDocs }, { data: allChoferes }] = await Promise.all([
         supabase.from('camion_docs').select('*'),
         supabase.from('camion_choferes').select('*'),
       ])
+
+      const camionesWithStats = mappedCamiones.map(c => {
+        const choferRow = (allChoferes ?? []).find(ch => ch.camion_id === c.id)
+        return {
+          ...c,
+          viajes: mappedViajes.filter(v => v.camionId === c.id).length,
+          chofer: choferRow?.nombre ?? 'Sin asignar',
+        }
+      })
       const needs = (iso: string) => { if (!iso) return false; const st = estadoVencimiento(iso); return st.kind === 'vencido' || st.kind === 'por_vencer' }
       const alertas: AlertaFlota[] = []
       for (const d of (allDocs ?? [])) {
@@ -423,6 +427,18 @@ function AppContent() {
     showToast('Documento eliminado.')
   }, [showToast])
 
+  const handleDesvincularChofer = useCallback(async (camionId: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('camion_choferes').delete().eq('camion_id', camionId)
+    if (!error) {
+      setCamionDetail((prev) => ({ ...prev, chofer: null }))
+      setCamiones((prev) => prev.map(c => c.id === camionId ? { ...c, chofer: 'Sin asignar' } : c))
+      showToast('Chofer desvinculado.')
+    } else {
+      showToast(`Error: ${error.message}`)
+    }
+  }, [showToast])
+
   const handleSaveChofer = useCallback(async (camionId: string, data: NuevoChoferData) => {
     const supabase = createClient()
     const { data: row, error } = await supabase.from('camion_choferes').upsert({
@@ -441,6 +457,7 @@ function AppContent() {
     }, { onConflict: 'camion_id' }).select().single()
     if (row) {
       setCamionDetail((prev) => ({ ...prev, chofer: choferFromDB(row) }))
+      setCamiones((prev) => prev.map(c => c.id === camionId ? { ...c, chofer: data.nombre } : c))
       showToast(`Chofer ${data.nombre} guardado.`)
     } else if (error) {
       showToast(`Error: ${error.message}`)
@@ -554,6 +571,7 @@ function AppContent() {
           onEditTaller={handleEditTaller}
           onDeleteTaller={handleDeleteTaller}
           onSaveChofer={handleSaveChofer}
+          onDesvincularChofer={handleDesvincularChofer}
           onEditarCamion={handleEditarCamion}
         />
       )

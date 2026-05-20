@@ -820,7 +820,7 @@ export function ChoferModal({ camion, chofer, onClose, onSave, onBack }: {
 
 // ── CHOFER TAB ────────────────────────────────────────────────────────────────
 
-function CamChoferTab({ chofer, camion, onSaveChofer }: { chofer: Chofer | null; camion: Camion; onSaveChofer: (data: NuevoChoferData) => Promise<void> }) {
+function CamChoferTab({ chofer, camion, onSaveChofer, onDesvincularChofer }: { chofer: Chofer | null; camion: Camion; onSaveChofer: (data: NuevoChoferData) => Promise<void>; onDesvincularChofer?: () => Promise<void> }) {
   const [modalOpen, setModalOpen] = useState(false)
 
   if (!chofer) {
@@ -845,7 +845,14 @@ function CamChoferTab({ chofer, camion, onSaveChofer }: { chofer: Chofer | null;
     <>
       {modalOpen && <ChoferModal camion={camion} chofer={chofer} onClose={() => setModalOpen(false)} onSave={onSaveChofer} />}
     <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16 }}>
-      <Card title="Datos personales" actions={<Button variant="secondary" size="sm" icon="edit" onClick={() => setModalOpen(true)}>Editar</Button>}>
+      <Card title="Datos personales" actions={
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onDesvincularChofer && (
+            <Button variant="danger" size="sm" icon="person_remove" onClick={onDesvincularChofer}>Desvincular</Button>
+          )}
+          <Button variant="secondary" size="sm" icon="edit" onClick={() => setModalOpen(true)}>Editar</Button>
+        </div>
+      }>
         <div style={{ display: 'flex', gap: 18, alignItems: 'center', marginBottom: 20 }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, var(--af-green), var(--af-lime))', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 700, fontSize: 22, flexShrink: 0 }}>
             {chofer.iniciales}
@@ -1769,6 +1776,7 @@ interface CamionDetailPageProps {
   onEditTaller: (camionId: string, visitaId: string, data: NuevaTallerVisitaData) => Promise<void>
   onDeleteTaller: (visitaId: string) => Promise<void>
   onSaveChofer: (camionId: string, data: NuevoChoferData) => Promise<void>
+  onDesvincularChofer: (camionId: string) => Promise<void>
   onEditarCamion: (camionId: string, data: NuevaUnidadData) => Promise<void>
 }
 
@@ -1799,7 +1807,7 @@ function camionToFormData(c: Camion): NuevaUnidadData {
   }
 }
 
-export function CamionDetailPage({ camion, viajes, clientes, detailData, loading = false, onBack, onViewViaje, onSetTires, onAddDoc, onDeleteDoc, onAddTaller, onEditTaller, onDeleteTaller, onSaveChofer, onEditarCamion }: CamionDetailPageProps) {
+export function CamionDetailPage({ camion, viajes, clientes, detailData, loading = false, onBack, onViewViaje, onSetTires, onAddDoc, onDeleteDoc, onAddTaller, onEditTaller, onDeleteTaller, onSaveChofer, onDesvincularChofer, onEditarCamion }: CamionDetailPageProps) {
   const [tab, setTab] = useState('dashboard')
   const [editModalOpen, setEditModalOpen] = useState(false)
   const { chofer, docs, taller, tires } = detailData
@@ -1853,7 +1861,7 @@ export function CamionDetailPage({ camion, viajes, clientes, detailData, loading
                 { key: 'dashboard',  label: 'Dashboard',       icon: 'dashboard' },
                 { key: 'viajes',     label: `Viajes (${camionViajes.length})`,   icon: 'route' },
                 { key: 'documentos', label: `Documentos${docsAlerta > 0 ? ` (${docsAlerta})` : ''}`, icon: 'description' },
-                { key: 'chofer',     label: 'Chofer',          icon: 'person' },
+                { key: 'chofer',     label: 'Chofer',          icon: 'person', dot: !chofer },
                 { key: 'taller',     label: `Taller (${taller.length})`,  icon: 'build' },
                 { key: 'neumaticos', label: `Neumáticos${tires.length > 0 ? ` (${tires.length})` : ''}`, icon: 'trip_origin' },
               ]}
@@ -1865,7 +1873,7 @@ export function CamionDetailPage({ camion, viajes, clientes, detailData, loading
               {tab === 'dashboard'  && <CamDashboardTab camion={camion} viajes={camionViajes} chofer={chofer} docs={docs} taller={taller} tires={tires} />}
               {tab === 'viajes'     && <CamViajesTab viajes={camionViajes} clientes={clientes} onViewViaje={onViewViaje} />}
               {tab === 'documentos' && <CamDocumentosTab docs={docs} onAddDoc={(data) => onAddDoc(camion.id, data)} onDeleteDoc={onDeleteDoc} />}
-              {tab === 'chofer'     && <CamChoferTab chofer={chofer} camion={camion} onSaveChofer={(data) => onSaveChofer(camion.id, data)} />}
+              {tab === 'chofer'     && <CamChoferTab chofer={chofer} camion={camion} onSaveChofer={(data) => onSaveChofer(camion.id, data)} onDesvincularChofer={() => onDesvincularChofer(camion.id)} />}
               {tab === 'taller'     && <CamTallerTab taller={taller} camion={camion} onAddTaller={(data) => onAddTaller(camion.id, data)} onEditTaller={(visitaId, data) => onEditTaller(camion.id, visitaId, data)} onDeleteTaller={onDeleteTaller} />}
               {tab === 'neumaticos' && <CamNeumaticosTab camion={camion} tires={tires} onSetTires={onSetTires} />}
             </div>
