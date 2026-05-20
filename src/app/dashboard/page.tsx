@@ -423,6 +423,17 @@ function AppContent() {
     showToast('Documento eliminado.')
   }, [showToast])
 
+  const handleDesvincularChofer = useCallback(async (camionId: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('camion_choferes').delete().eq('camion_id', camionId)
+    if (!error) {
+      setCamionDetail((prev) => ({ ...prev, chofer: null }))
+      showToast('Chofer desvinculado.')
+    } else {
+      showToast(`Error: ${error.message}`)
+    }
+  }, [showToast])
+
   const handleSaveChofer = useCallback(async (camionId: string, data: NuevoChoferData) => {
     const supabase = createClient()
     const { data: row, error } = await supabase.from('camion_choferes').upsert({
@@ -554,6 +565,7 @@ function AppContent() {
           onEditTaller={handleEditTaller}
           onDeleteTaller={handleDeleteTaller}
           onSaveChofer={handleSaveChofer}
+          onDesvincularChofer={handleDesvincularChofer}
           onEditarCamion={handleEditarCamion}
         />
       )
