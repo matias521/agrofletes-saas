@@ -260,7 +260,7 @@ function AppContent() {
     }
   }, [user, showToast])
 
-  const handleNuevoCamion = useCallback(async (data: NuevaUnidadData) => {
+  const handleNuevoCamion = useCallback(async (data: NuevaUnidadData): Promise<Camion | null> => {
     const supabase = createClient()
     const { data: row, error } = await supabase.from('camiones').insert({
       user_id: user!.id,
@@ -269,7 +269,7 @@ function AppContent() {
       marca: data.marca || null,
       modelo: data.modelo || null,
       anio: parseInt(data.anio) || null,
-      chofer: data.chofer || null,
+      chofer: null,
       peso_max_ton: parseFloat(data.pesoMaxTon) || null,
       volumen_m3: parseFloat(data.volumenM3) || null,
       grain_cert: data.grainCert,
@@ -277,11 +277,14 @@ function AppContent() {
       activo: true,
     }).select().single()
     if (row) {
-      setCamiones((prev) => [...prev, camionFromDB(row)])
+      const camion = camionFromDB(row)
+      setCamiones((prev) => [...prev, camion])
       showToast(`Unidad ${row.patente} registrada.`)
+      return camion
     } else if (error) {
       showToast(`Error al guardar: ${error.message}`)
     }
+    return null
   }, [user, showToast])
 
   const handleEditarCamion = useCallback(async (camionId: string, data: NuevaUnidadData) => {
@@ -584,7 +587,7 @@ function AppContent() {
       case 'clientes':
         return <ClientesPage clientes={clientes} viajes={viajes} onNuevoCliente={handleNuevoCliente} />
       case 'camiones':
-        return <CamionesPage camiones={camiones} viajes={viajes} onNuevoCamion={handleNuevoCamion} onSelectCamion={handleSelectCamion} openNewUnitModal={openCamionesModal} />
+        return <CamionesPage camiones={camiones} viajes={viajes} onNuevoCamion={handleNuevoCamion} onSaveChofer={handleSaveChofer} onSelectCamion={handleSelectCamion} openNewUnitModal={openCamionesModal} />
       case 'reportes':
         return <ReportesPage />
       case 'configuracion':
