@@ -650,11 +650,12 @@ export interface NuevoChoferData {
   libretaSanidadVenc: string
 }
 
-function ChoferModal({ camion, chofer, onClose, onSave }: {
+export function ChoferModal({ camion, chofer, onClose, onSave, onBack }: {
   camion: Camion
   chofer: Chofer | null
   onClose: () => void
   onSave: (data: NuevoChoferData) => Promise<void>
+  onBack?: () => void
 }) {
   const [nombre, setNombre] = useState(chofer?.nombre ?? '')
   const [dni, setDni] = useState(chofer?.dni ?? '')
@@ -793,16 +794,24 @@ function ChoferModal({ camion, chofer, onClose, onSave }: {
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '16px 28px 24px', borderTop: '1px solid var(--border-soft)', display: 'flex', justifyContent: 'flex-end', gap: 8, position: 'sticky', bottom: 0, background: 'var(--surface-card)', borderRadius: '0 0 16px 16px' }}>
-          <button className="btn btn-ghost" onClick={onClose} disabled={saving}>Cancelar</button>
-          <button
-            className="btn btn-primary"
-            onClick={handleSubmit}
-            disabled={saving || !nombre.trim()}
-          >
-            <Icon name={isEdit ? 'save' : 'person_add'} size={15} />
-            {saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Asignar chofer'}
-          </button>
+        <div style={{ padding: '16px 28px 24px', borderTop: '1px solid var(--border-soft)', display: 'flex', justifyContent: onBack ? 'space-between' : 'flex-end', alignItems: 'center', gap: 8, position: 'sticky', bottom: 0, background: 'var(--surface-card)', borderRadius: '0 0 16px 16px' }}>
+          {onBack && (
+            <button className="btn btn-ghost" onClick={onBack} disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Icon name="arrow_back" size={15} />
+              Volver
+            </button>
+          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-ghost" onClick={onClose} disabled={saving}>{onBack ? 'Omitir' : 'Cancelar'}</button>
+            <button
+              className="btn btn-primary"
+              onClick={handleSubmit}
+              disabled={saving || !nombre.trim()}
+            >
+              <Icon name={isEdit ? 'save' : 'person_add'} size={15} />
+              {saving ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Asignar chofer'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

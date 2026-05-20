@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { Icon } from './icon'
 import { Button, Drawer, Tabs, Field, Input, SelectInput, Textarea, DataRow, useToast } from './ui'
 import { PageHeader } from './layout'
+import { ChoferModal, NuevoChoferData } from './camion-detail'
 import {
   Cliente,
   Camion,
@@ -411,15 +412,17 @@ export interface NuevaUnidadData {
 interface CamionesPageProps {
   camiones: Camion[]
   viajes?: Viaje[]
-  onNuevoCamion?: (data: NuevaUnidadData) => Promise<void>
+  onNuevoCamion?: (data: NuevaUnidadData) => Promise<Camion | null>
+  onSaveChofer?: (camionId: string, data: NuevoChoferData) => Promise<void>
   onSelectCamion?: (c: Camion) => void
   openNewUnitModal?: boolean
 }
 
-export function CamionesPage({ camiones, viajes = [], onNuevoCamion, onSelectCamion, openNewUnitModal }: CamionesPageProps) {
+export function CamionesPage({ camiones, viajes = [], onNuevoCamion, onSaveChofer, onSelectCamion, openNewUnitModal }: CamionesPageProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [pendingChoferCamion, setPendingChoferCamion] = useState<Camion | null>(null)
 
   useEffect(() => {
     if (openNewUnitModal) setModalOpen(true)
@@ -590,10 +593,24 @@ export function CamionesPage({ camiones, viajes = [], onNuevoCamion, onSelectCam
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSave={async (data) => {
-          await onNuevoCamion?.(data)
+          const camion = await onNuevoCamion?.(data)
           setModalOpen(false)
+          if (camion) setPendingChoferCamion(camion)
         }}
       />
+
+      {pendingChoferCamion && (
+        <ChoferModal
+          camion={pendingChoferCamion}
+          chofer={null}
+          onClose={() => setPendingChoferCamion(null)}
+          onBack={() => { setPendingChoferCamion(null); setModalOpen(true) }}
+          onSave={async (data) => {
+            if (onSaveChofer) await onSaveChofer(pendingChoferCamion.id, data)
+            setPendingChoferCamion(null)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -770,20 +787,6 @@ export function NuevaUnidadModal({ open, onClose, onSave, initialData }: NuevaUn
                 />
               </Field>
             </div>
-          </div>
-
-          {/* ── Sección 3: Chofer ── */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 16 }}>
-              Chofer asignado
-            </div>
-            <Field label="Nombre del chofer">
-              <Input
-                placeholder="Ej: Juan Pérez"
-                value={data.chofer}
-                onChange={(e) => set('chofer', e.target.value)}
-              />
-            </Field>
           </div>
 
           {/* ── Sección 4: Datos del acoplado ── */}

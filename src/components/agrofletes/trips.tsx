@@ -75,13 +75,17 @@ export function TripsListPage({
   onDeleteViaje,
 }: TripsListPageProps) {
   const [filterEstado, setFilterEstado] = useState<EstadoKey | 'todos'>('todos')
+  const [filterCamion, setFilterCamion] = useState<string | 'todos'>('todos')
   const [search, setSearch] = useState('')
   const [menuTarget, setMenuTarget] = useState<{ rect: { bottom: number; right: number }; viaje: Viaje } | null>(null)
   const { showToast } = useToast()
 
   const estadoKeys = Object.keys(ESTADOS) as EstadoKey[]
 
+  const camionesConViajes = camiones.filter((c) => viajes.some((v) => v.camionId === c.id))
+
   const filtered = viajes.filter((v) => {
+    const matchCamion = filterCamion === 'todos' || v.camionId === filterCamion
     const matchEstado = filterEstado === 'todos' || v.estado === filterEstado
     const q = search.toLowerCase()
     const cliente = clienteById(v.clienteId, clientes)
@@ -92,7 +96,7 @@ export function TripsListPage({
       clienteNombre.toLowerCase().includes(q) ||
       v.origen.toLowerCase().includes(q) ||
       v.destino.toLowerCase().includes(q)
-    return matchEstado && matchSearch
+    return matchCamion && matchEstado && matchSearch
   })
 
   function openMenu(e: React.MouseEvent, viaje: Viaje) {
@@ -115,6 +119,69 @@ export function TripsListPage({
       />
 
       <div className="page-body" style={{ flex: 1, overflowY: 'auto' }}>
+        {/* Truck tabs */}
+        {camionesConViajes.length > 0 && (
+          <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid var(--border-soft)', marginBottom: 16, overflowX: 'auto' }}>
+            <button
+              onClick={() => setFilterCamion('todos')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '10px 20px', border: 'none', background: 'none', cursor: 'pointer',
+                borderBottom: filterCamion === 'todos' ? '2px solid var(--af-green)' : '2px solid transparent',
+                marginBottom: -2, fontWeight: filterCamion === 'todos' ? 600 : 400,
+                color: filterCamion === 'todos' ? 'var(--af-green-press)' : 'var(--text-secondary)',
+                fontSize: 14, whiteSpace: 'nowrap', transition: 'color 120ms',
+              }}
+            >
+              <Icon name="list" size={16} />
+              Todos
+              <span style={{
+                background: filterCamion === 'todos' ? 'rgba(11,148,68,.15)' : 'var(--surface-muted)',
+                color: filterCamion === 'todos' ? 'var(--af-green-press)' : 'var(--text-secondary)',
+                borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 600,
+              }}>
+                {viajes.length}
+              </span>
+            </button>
+
+            {camionesConViajes.map((c) => {
+              const count = viajes.filter((v) => v.camionId === c.id).length
+              const active = filterCamion === c.id
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => setFilterCamion(c.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 20px', border: 'none', background: 'none', cursor: 'pointer',
+                    borderBottom: active ? '2px solid var(--af-green)' : '2px solid transparent',
+                    marginBottom: -2, whiteSpace: 'nowrap', transition: 'color 120ms',
+                  }}
+                >
+                  <Icon name="local_shipping" size={16} style={{ color: active ? 'var(--af-green)' : 'var(--text-tertiary)' }} />
+                  <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: active ? 'var(--af-green-press)' : 'var(--text-primary)', lineHeight: 1.2 }}>
+                      {c.patente}
+                    </span>
+                    {c.chofer && (
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.2 }}>
+                        {c.chofer}
+                      </span>
+                    )}
+                  </span>
+                  <span style={{
+                    background: active ? 'rgba(11,148,68,.15)' : 'var(--surface-muted)',
+                    color: active ? 'var(--af-green-press)' : 'var(--text-secondary)',
+                    borderRadius: 99, padding: '1px 8px', fontSize: 11, fontWeight: 600,
+                  }}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         {/* Filter bar */}
         <div className="filter-bar">
           <div className="input-affix-wrap" style={{ width: 260 }}>
