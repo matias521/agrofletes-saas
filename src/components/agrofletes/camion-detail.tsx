@@ -820,20 +820,77 @@ export function ChoferModal({ camion, chofer, onClose, onSave, onBack }: {
 
 // ── CHOFER TAB ────────────────────────────────────────────────────────────────
 
-function CamChoferTab({ chofer, camion, onSaveChofer, onDesvincularChofer }: { chofer: Chofer | null; camion: Camion; onSaveChofer: (data: NuevoChoferData) => Promise<void>; onDesvincularChofer?: () => Promise<void> }) {
+function SeleccionarChoferModal({ camion, choferes, onClose, onSelect }: { camion: Camion; choferes: Chofer[]; onClose: () => void; onSelect: (choferId: string) => Promise<void> }) {
+  const [selected, setSelected] = useState('')
+  const [saving, setSaving] = useState(false)
+  async function handleSave() {
+    if (!selected) return
+    setSaving(true)
+    await onSelect(selected)
+    onClose()
+  }
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
+      <div style={{ background: 'var(--surface-card)', borderRadius: 16, width: 480, maxWidth: '100%', boxShadow: 'var(--shadow-xl)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '22px 24px 18px', borderBottom: '1px solid var(--border-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>Seleccionar chofer</div>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>{camion.patente}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}><Icon name="close" size={18} /></button>
+        </div>
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 360, overflowY: 'auto' }}>
+          {choferes.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', padding: '16px 0' }}>
+              <Icon name="badge" size={28} />
+              <div style={{ marginTop: 8, fontSize: 13 }}>No hay choferes disponibles sin camión asignado.</div>
+            </div>
+          ) : (
+            choferes.map(c => (
+              <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', border: `1.5px solid ${selected === c.id ? 'var(--af-green)' : 'var(--border-soft)'}`, borderRadius: 10, cursor: 'pointer', background: selected === c.id ? 'var(--af-green-bg)' : 'transparent', transition: 'all 150ms' }}>
+                <input type="radio" name="chofer" value={c.id} checked={selected === c.id} onChange={() => setSelected(c.id)} style={{ accentColor: 'var(--af-green)' }} />
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, var(--af-green), var(--af-lime))', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{c.iniciales}</div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{c.nombre}</div>
+                  {c.dni && <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>DNI {c.dni}</div>}
+                </div>
+              </label>
+            ))
+          )}
+        </div>
+        <div style={{ padding: '14px 24px 20px', borderTop: '1px solid var(--border-soft)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button className="btn btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={!selected || saving}>
+            <Icon name="person_add" size={15} />
+            {saving ? 'Guardando...' : 'Asignar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CamChoferTab({ chofer, camion, choferes, onSaveChofer, onDesvincularChofer, onSeleccionarChofer }: { chofer: Chofer | null; camion: Camion; choferes?: Chofer[]; onSaveChofer: (data: NuevoChoferData) => Promise<void>; onDesvincularChofer?: () => Promise<void>; onSeleccionarChofer?: (choferId: string) => Promise<void> }) {
   const [modalOpen, setModalOpen] = useState(false)
+  const [selectorOpen, setSelectorOpen] = useState(false)
 
   if (!chofer) {
     return (
       <>
         {modalOpen && <ChoferModal camion={camion} chofer={null} onClose={() => setModalOpen(false)} onSave={onSaveChofer} />}
+        {selectorOpen && choferes && onSeleccionarChofer && (
+          <SeleccionarChoferModal camion={camion} choferes={choferes} onClose={() => setSelectorOpen(false)} onSelect={onSeleccionarChofer} />
+        )}
         <Card>
           <div className="empty" style={{ padding: 32 }}>
             <div className="ico"><Icon name="person_off" /></div>
             <h3>Sin chofer asignado</h3>
             <p>Asigná un chofer para registrar viajes con este camión.</p>
-            <div style={{ marginTop: 16 }}>
-              <Button variant="primary" icon="person_add" onClick={() => setModalOpen(true)}>Asignar chofer</Button>
+            <div style={{ marginTop: 16, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              {choferes && choferes.length > 0 && onSeleccionarChofer && (
+                <Button variant="secondary" icon="badge" onClick={() => setSelectorOpen(true)}>Del listado</Button>
+              )}
+              <Button variant="primary" icon="person_add" onClick={() => setModalOpen(true)}>Crear nuevo</Button>
             </div>
           </div>
         </Card>
@@ -1775,8 +1832,10 @@ interface CamionDetailPageProps {
   onAddTaller: (camionId: string, data: NuevaTallerVisitaData) => Promise<void>
   onEditTaller: (camionId: string, visitaId: string, data: NuevaTallerVisitaData) => Promise<void>
   onDeleteTaller: (visitaId: string) => Promise<void>
-  onSaveChofer: (camionId: string, data: NuevoChoferData) => Promise<void>
+  choferes?: Chofer[]
+  onSaveChofer: (camionId: string, data: NuevoChoferData, existingChoferId?: string) => Promise<void>
   onDesvincularChofer: (camionId: string) => Promise<void>
+  onSeleccionarChofer?: (camionId: string, choferId: string) => Promise<void>
   onEditarCamion: (camionId: string, data: NuevaUnidadData) => Promise<void>
 }
 
@@ -1807,7 +1866,7 @@ function camionToFormData(c: Camion): NuevaUnidadData {
   }
 }
 
-export function CamionDetailPage({ camion, viajes, clientes, detailData, loading = false, onBack, onViewViaje, onSetTires, onAddDoc, onDeleteDoc, onAddTaller, onEditTaller, onDeleteTaller, onSaveChofer, onDesvincularChofer, onEditarCamion }: CamionDetailPageProps) {
+export function CamionDetailPage({ camion, viajes, clientes, detailData, loading = false, onBack, onViewViaje, onSetTires, onAddDoc, onDeleteDoc, onAddTaller, onEditTaller, onDeleteTaller, choferes, onSaveChofer, onDesvincularChofer, onSeleccionarChofer, onEditarCamion }: CamionDetailPageProps) {
   const [tab, setTab] = useState('dashboard')
   const [editModalOpen, setEditModalOpen] = useState(false)
   const { chofer, docs, taller, tires } = detailData
@@ -1873,7 +1932,7 @@ export function CamionDetailPage({ camion, viajes, clientes, detailData, loading
               {tab === 'dashboard'  && <CamDashboardTab camion={camion} viajes={camionViajes} chofer={chofer} docs={docs} taller={taller} tires={tires} />}
               {tab === 'viajes'     && <CamViajesTab viajes={camionViajes} clientes={clientes} onViewViaje={onViewViaje} />}
               {tab === 'documentos' && <CamDocumentosTab docs={docs} onAddDoc={(data) => onAddDoc(camion.id, data)} onDeleteDoc={onDeleteDoc} />}
-              {tab === 'chofer'     && <CamChoferTab chofer={chofer} camion={camion} onSaveChofer={(data) => onSaveChofer(camion.id, data)} onDesvincularChofer={() => onDesvincularChofer(camion.id)} />}
+              {tab === 'chofer'     && <CamChoferTab chofer={chofer} camion={camion} choferes={choferes} onSaveChofer={(data) => onSaveChofer(camion.id, data, chofer?.id)} onDesvincularChofer={() => onDesvincularChofer(camion.id)} onSeleccionarChofer={onSeleccionarChofer ? (id) => onSeleccionarChofer(camion.id, id) : undefined} />}
               {tab === 'taller'     && <CamTallerTab taller={taller} camion={camion} onAddTaller={(data) => onAddTaller(camion.id, data)} onEditTaller={(visitaId, data) => onEditTaller(camion.id, visitaId, data)} onDeleteTaller={onDeleteTaller} />}
               {tab === 'neumaticos' && <CamNeumaticosTab camion={camion} tires={tires} onSetTires={onSetTires} />}
             </div>

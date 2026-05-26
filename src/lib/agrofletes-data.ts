@@ -659,7 +659,8 @@ export function docById(id: TipoDoc): { label: string; icon: string } {
 
 export interface Chofer {
   id: string
-  camionId: string
+  camionId: string | null
+  activo: boolean
   nombre: string
   dni: string
   fechaNac: string
@@ -750,7 +751,8 @@ export interface TirePosition {
 export interface ChoferDB {
   id: string
   user_id: string
-  camion_id: string
+  camion_id: string | null
+  activo: boolean | null
   nombre: string
   dni: string | null
   fecha_nac: string | null
@@ -974,6 +976,7 @@ export function choferFromDB(row: ChoferDB): Chofer {
   return {
     id: row.id,
     camionId: row.camion_id,
+    activo: row.activo ?? true,
     nombre: row.nombre,
     dni: row.dni ?? '',
     fechaNac: row.fecha_nac ?? '',

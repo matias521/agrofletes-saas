@@ -403,6 +403,7 @@ interface TripDetailPageProps {
   onBack: () => void
   onUpdateEstado: (id: string, estado: EstadoKey) => void
   onAddDoc: (viajeId: string, tipoId: TipoDoc, nombre: string, file: File | null) => Promise<void>
+  onEdit?: () => void
 }
 
 // ── Doc types ─────────────────────────────────────────────────────────────────
@@ -509,7 +510,7 @@ function ViajeDocModal({ viajeId, onClose, onSave }: {
   )
 }
 
-export function TripDetailPage({ viaje, clientes, camiones, onBack, onUpdateEstado, onAddDoc }: TripDetailPageProps) {
+export function TripDetailPage({ viaje, clientes, camiones, onBack, onUpdateEstado, onAddDoc, onEdit }: TripDetailPageProps) {
   const { showToast } = useToast()
   const [docModalOpen, setDocModalOpen] = useState(false)
   const timeline = TIMELINE_V1023.slice(0, 0) // empty for real trips; keep for demo
@@ -576,18 +577,25 @@ export function TripDetailPage({ viaje, clientes, camiones, onBack, onUpdateEsta
               </div>
             </div>
           </div>
-          {next && (
-            <Button
-              variant="primary"
-              icon="arrow_forward"
-              onClick={() => {
-                onUpdateEstado(viaje.id, next)
-                showToast(`Estado actualizado a ${ESTADOS[next].label}`)
-              }}
-            >
-              Avanzar a {ESTADOS[next].label}
-            </Button>
-          )}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {onEdit && (
+              <Button variant="secondary" icon="edit" onClick={onEdit}>
+                Editar
+              </Button>
+            )}
+            {next && (
+              <Button
+                variant="primary"
+                icon="arrow_forward"
+                onClick={() => {
+                  onUpdateEstado(viaje.id, next)
+                  showToast(`Estado actualizado a ${ESTADOS[next].label}`)
+                }}
+              >
+                Avanzar a {ESTADOS[next].label}
+              </Button>
+            )}
+          </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20 }}>
@@ -778,6 +786,7 @@ interface TripWizardProps {
   onClose: () => void
   onSave: (data: WizardData) => void
   onGoToCamiones: () => void
+  initialData?: Viaje
 }
 
 interface WizardFormData {
@@ -812,10 +821,41 @@ const EMPTY_DATA: WizardFormData = {
   tarifa: '',
 }
 
-export function TripWizard({ open, clientes, camiones, onClose, onSave, onGoToCamiones }: TripWizardProps) {
+export function TripWizard({ open, clientes, camiones, onClose, onSave, onGoToCamiones, initialData }: TripWizardProps) {
   const [step, setStep] = useState(0)
   const [data, setData] = useState<WizardFormData>(EMPTY_DATA)
   const { showToast } = useToast()
+
+  React.useEffect(() => {
+    if (open && initialData) {
+      const isMaquinaria = initialData.tipoCargaId === 'maquinaria'
+      const isCerdos = initialData.tipoCargaId === 'cerdos'
+      const tarifa = (isMaquinaria || isCerdos)
+        ? String(initialData.monto)
+        : initialData.toneladas > 0
+          ? String(Math.round(initialData.monto / initialData.toneladas))
+          : String(initialData.monto)
+      setData({
+        clienteId: initialData.clienteId || '',
+        nuevoClienteRazon: '',
+        tipoCargaId: initialData.tipoCargaId || '',
+        tipoCargaCustomLabel: isMaquinaria ? (initialData.tipoCargaLabel || '') : '',
+        toneladas: initialData.toneladas ? String(initialData.toneladas) : '',
+        notas: initialData.notas || '',
+        camionId: initialData.camionId || '',
+        fechaSal: initialData.fecha || '',
+        fechaLleg: initialData.fechaLleg || '',
+        origen: initialData.origen || '',
+        destino: initialData.destino || '',
+        km: initialData.km ? String(initialData.km) : '',
+        tarifa,
+      })
+      setStep(0)
+    } else if (!open) {
+      setStep(0)
+      setData(EMPTY_DATA)
+    }
+  }, [open, initialData])
 
   function set(field: keyof WizardFormData, value: string) {
     setData((prev) => ({ ...prev, [field]: value }))
@@ -922,7 +962,7 @@ export function TripWizard({ open, clientes, camiones, onClose, onSave, onGoToCa
       <div className="modal modal-wide" onMouseDown={(e) => e.stopPropagation()}>
         {/* Modal head */}
         <div className="modal-head">
-          <h2>Nuevo viaje</h2>
+          <h2>{initialData ? `Editar viaje #${initialData.numero}` : 'Nuevo viaje'}</h2>
           <Button variant="ghost" size="sm" icon="close" onClick={handleClose} />
         </div>
 
@@ -976,7 +1016,7 @@ export function TripWizard({ open, clientes, camiones, onClose, onSave, onGoToCa
             )}
             {step === 2 && (
               <Button variant="primary" icon="check" disabled={!canSave} onClick={handleSave}>
-                Crear viaje
+                {initialData ? 'Guardar cambios' : 'Crear viaje'}
               </Button>
             )}
           </div>

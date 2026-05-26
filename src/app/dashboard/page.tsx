@@ -8,11 +8,13 @@ import { TripsListPage, TripDetailPage, TripWizard, WizardData } from '@/compone
 import type { TipoDoc } from '@/lib/agrofletes-data'
 import { ClientesPage, CamionesPage, ReportesPage, ConfigPage, NuevaUnidadData, NuevoClienteData } from '@/components/agrofletes/secondary'
 import { CamionDetailPage, CamionDetailData, NuevoDocData, NuevaTallerVisitaData, NuevoChoferData } from '@/components/agrofletes/camion-detail'
+import { ChoferesPage, ChoferDetailPage, ChoferFormModal } from '@/components/agrofletes/choferes'
 import { OnboardingFlow } from '@/components/agrofletes/onboarding'
 import {
   Viaje,
   Cliente,
   Camion,
+  Chofer,
   Neumatico,
   EstadoKey,
   ESTADOS,
@@ -29,7 +31,7 @@ import {
 } from '@/lib/agrofletes-data'
 import { createClient } from '@/lib/supabase'
 
-type PageKey = 'inicio' | 'viajes' | 'clientes' | 'camiones' | 'reportes' | 'configuracion'
+type PageKey = 'inicio' | 'viajes' | 'clientes' | 'camiones' | 'choferes' | 'reportes' | 'configuracion'
 
 function AppContent() {
   const router = useRouter()
@@ -43,7 +45,12 @@ function AppContent() {
   const [openCamion, setOpenCamion] = useState<Camion | null>(null)
   const [camionDetail, setCamionDetail] = useState<CamionDetailData>({ chofer: null, docs: [], taller: [], tires: [] })
   const [camionDetailLoading, setCamionDetailLoading] = useState(false)
+  const [choferes, setChoferes] = useState<Chofer[]>([])
+  const [openChofer, setOpenChofer] = useState<Chofer | null>(null)
+  const [choferFormOpen, setChoferFormOpen] = useState(false)
+  const [editingChofer, setEditingChofer] = useState<Chofer | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [editingViaje, setEditingViaje] = useState<Viaje | null>(null)
   const [onboardingOpen, setOnboardingOpen] = useState(false)
   const [spotlightNav, setSpotlightNav] = useState<string | undefined>(undefined)
   const [openCamionesModal, setOpenCamionesModal] = useState(false)
@@ -84,14 +91,16 @@ function AppContent() {
         viajes: mappedViajes.filter(v => v.clienteId === c.id).length,
         facturado: mappedViajes.filter(v => v.clienteId === c.id).reduce((s, v) => s + v.monto, 0),
       }))
-      // Load fleet alerts (docs + chofer docs)
-      const [{ data: allDocs }, { data: allChoferes }] = await Promise.all([
+      // Load fleet alerts (docs + choferes)
+      const [{ data: allDocs }, { data: choferesDB }] = await Promise.all([
         supabase.from('camion_docs').select('*'),
         supabase.from('camion_choferes').select('*'),
       ])
 
+      const mappedChoferes = (choferesDB ?? []).map(choferFromDB)
+
       const camionesWithStats = mappedCamiones.map(c => {
-        const choferRow = (allChoferes ?? []).find(ch => ch.camion_id === c.id)
+        const choferRow = mappedChoferes.find(ch => ch.camionId === c.id)
         return {
           ...c,
           viajes: mappedViajes.filter(v => v.camionId === c.id).length,
@@ -106,11 +115,11 @@ function AppContent() {
         const st = estadoVencimiento(d.venc)
         alertas.push({ id: d.id, label: tipo?.label ?? d.tipo_id, icon: tipo?.icon ?? 'description', venc: d.venc, sub: d.numero || undefined, kind: st.kind as 'vencido' | 'por_vencer', dias: st.dias })
       }
-      for (const c of (allChoferes ?? [])) {
+      for (const c of mappedChoferes) {
         const checks = [
-          { id: `${c.id}-lic`,  label: 'Licencia de conducir', icon: 'local_police',       venc: c.lic_venc },
-          { id: `${c.id}-psic`, label: 'Psicofísico',           icon: 'medical_services',  venc: c.psicofisico_venc },
-          { id: `${c.id}-lib`,  label: 'Libreta de sanidad',    icon: 'health_and_safety', venc: c.libreta_sanidad_venc },
+          { id: `${c.id}-lic`,  label: 'Licencia de conducir', icon: 'local_police',       venc: c.licencia.venc },
+          { id: `${c.id}-psic`, label: 'Psicofísico',           icon: 'medical_services',  venc: c.psicofisico.venc },
+          { id: `${c.id}-lib`,  label: 'Libreta de sanidad',    icon: 'health_and_safety', venc: c.libretaSanidad.venc },
         ]
         for (const ch of checks) {
           if (!needs(ch.venc)) continue
@@ -125,6 +134,7 @@ function AppContent() {
       setViajes(mappedViajes)
       setClientes(clientesWithStats)
       setCamiones(camionesWithStats)
+      setChoferes(mappedChoferes)
       setPlan((perfil?.plan as 'Free' | 'Pro') ?? 'Free')
       setUser({ id: authUser.id, email: authUser.email })
       setLoading(false)
@@ -145,6 +155,7 @@ function AppContent() {
     setActivePage(page)
     setOpenViaje(null)
     setOpenCamion(null)
+    setOpenChofer(null)
   }, [])
 
   const handleOnboardingNavigate = useCallback((page: string) => {
@@ -263,6 +274,32 @@ function AppContent() {
       showToast(`Error al crear viaje: ${error.message}`)
     }
   }, [user, showToast])
+
+  const handleEditViaje = useCallback(async (viajeId: string, data: WizardData) => {
+    const supabase = createClient()
+    const { data: row, error } = await supabase.from('viajes').update({
+      fecha: data.fechaSal,
+      fecha_lleg: data.fechaLleg || null,
+      cliente_id: data.clienteId || null,
+      origen: data.origen,
+      destino: data.destino,
+      km: parseInt(data.km) || 0,
+      camion_id: data.camionId || null,
+      tipo_carga_id: data.tipoCargaId,
+      tipo_carga_label: data.tipoCargaLabel,
+      toneladas: parseFloat(data.toneladas) || 0,
+      monto: data.total,
+      notas: data.notas || '',
+    }).eq('id', viajeId).select().single()
+    if (row) {
+      const updated = viajeFromDB(row)
+      setViajes((prev) => prev.map((v) => (v.id === viajeId ? updated : v)))
+      setOpenViaje(updated)
+      showToast(`Viaje #${row.numero} actualizado.`)
+    } else if (error) {
+      showToast(`Error: ${error.message}`)
+    }
+  }, [showToast])
 
   const handleNuevoCamion = useCallback(async (data: NuevaUnidadData): Promise<Camion | null> => {
     const supabase = createClient()
@@ -429,40 +466,135 @@ function AppContent() {
 
   const handleDesvincularChofer = useCallback(async (camionId: string) => {
     const supabase = createClient()
-    const { error } = await supabase.from('camion_choferes').delete().eq('camion_id', camionId)
+    const { error } = await supabase.from('camion_choferes').update({ camion_id: null }).eq('camion_id', camionId)
     if (!error) {
       setCamionDetail((prev) => ({ ...prev, chofer: null }))
       setCamiones((prev) => prev.map(c => c.id === camionId ? { ...c, chofer: 'Sin asignar' } : c))
+      setChoferes((prev) => prev.map(c => c.camionId === camionId ? { ...c, camionId: null } : c))
       showToast('Chofer desvinculado.')
     } else {
       showToast(`Error: ${error.message}`)
     }
   }, [showToast])
 
-  const handleSaveChofer = useCallback(async (camionId: string, data: NuevoChoferData) => {
+  const choferPayload = (data: NuevoChoferData) => ({
+    nombre: data.nombre,
+    iniciales: data.nombre.split(/\s+/).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+    dni: data.dni || null,
+    tel: data.tel || null,
+    email: data.email || null,
+    lic_cat: data.licCat || null,
+    lic_numero: data.licNumero || null,
+    lic_venc: data.licVenc || null,
+    psicofisico_venc: data.psicofisicoVenc || null,
+    libreta_sanidad_venc: data.libretaSanidadVenc || null,
+  })
+
+  const handleSaveChofer = useCallback(async (camionId: string, data: NuevoChoferData, existingChoferId?: string) => {
     const supabase = createClient()
-    const { data: row, error } = await supabase.from('camion_choferes').upsert({
-      user_id: user!.id,
-      camion_id: camionId,
-      nombre: data.nombre,
-      iniciales: data.nombre.split(/\s+/).map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
-      dni: data.dni || null,
-      tel: data.tel || null,
-      email: data.email || null,
-      lic_cat: data.licCat || null,
-      lic_numero: data.licNumero || null,
-      lic_venc: data.licVenc || null,
-      psicofisico_venc: data.psicofisicoVenc || null,
-      libreta_sanidad_venc: data.libretaSanidadVenc || null,
-    }, { onConflict: 'camion_id' }).select().single()
-    if (row) {
-      setCamionDetail((prev) => ({ ...prev, chofer: choferFromDB(row) }))
-      setCamiones((prev) => prev.map(c => c.id === camionId ? { ...c, chofer: data.nombre } : c))
-      showToast(`Chofer ${data.nombre} guardado.`)
-    } else if (error) {
-      showToast(`Error: ${error.message}`)
+    if (existingChoferId) {
+      const { data: row, error } = await supabase.from('camion_choferes').update(choferPayload(data)).eq('id', existingChoferId).select().single()
+      if (row) {
+        const updated = choferFromDB(row)
+        setCamionDetail((prev) => ({ ...prev, chofer: updated }))
+        setCamiones((prev) => prev.map(c => c.id === camionId ? { ...c, chofer: data.nombre } : c))
+        setChoferes((prev) => prev.map(c => c.id === existingChoferId ? updated : c))
+        showToast(`Chofer ${data.nombre} actualizado.`)
+      } else if (error) { showToast(`Error: ${error.message}`) }
+    } else {
+      const { data: row, error } = await supabase.from('camion_choferes').insert({ user_id: user!.id, camion_id: camionId, activo: true, ...choferPayload(data) }).select().single()
+      if (row) {
+        const newChofer = choferFromDB(row)
+        setCamionDetail((prev) => ({ ...prev, chofer: newChofer }))
+        setCamiones((prev) => prev.map(c => c.id === camionId ? { ...c, chofer: data.nombre } : c))
+        setChoferes((prev) => [...prev, newChofer])
+        showToast(`Chofer ${data.nombre} guardado.`)
+      } else if (error) { showToast(`Error: ${error.message}`) }
     }
   }, [user, showToast])
+
+  const handleNuevoChofer = useCallback(async (data: NuevoChoferData, camionId?: string) => {
+    const supabase = createClient()
+    // If assigning to a camion that already has a chofer, desvinculate first
+    if (camionId) {
+      const existing = choferes.find(c => c.camionId === camionId)
+      if (existing) {
+        await supabase.from('camion_choferes').update({ camion_id: null }).eq('id', existing.id)
+        setChoferes((prev) => prev.map(c => c.id === existing.id ? { ...c, camionId: null } : c))
+      }
+    }
+    const { data: row, error } = await supabase.from('camion_choferes').insert({ user_id: user!.id, camion_id: camionId || null, activo: true, ...choferPayload(data) }).select().single()
+    if (row) {
+      const newChofer = choferFromDB(row)
+      setChoferes((prev) => [...prev, newChofer])
+      if (camionId) setCamiones((prev) => prev.map(c => c.id === camionId ? { ...c, chofer: data.nombre } : c))
+      showToast(`Chofer ${data.nombre} creado.`)
+    } else if (error) { showToast(`Error: ${error.message}`) }
+  }, [user, choferes, showToast])
+
+  const handleEditChofer = useCallback(async (choferId: string, data: NuevoChoferData, camionId?: string) => {
+    const supabase = createClient()
+    const existing = choferes.find(c => c.id === choferId)
+    const prevCamionId = existing?.camionId ?? null
+    // If camion changed and new camion already has a chofer, desvinculate
+    if (camionId && camionId !== prevCamionId) {
+      const blocker = choferes.find(c => c.camionId === camionId && c.id !== choferId)
+      if (blocker) {
+        await supabase.from('camion_choferes').update({ camion_id: null }).eq('id', blocker.id)
+        setChoferes((prev) => prev.map(c => c.id === blocker.id ? { ...c, camionId: null } : c))
+      }
+    }
+    const { data: row, error } = await supabase.from('camion_choferes').update({ ...choferPayload(data), camion_id: camionId || null }).eq('id', choferId).select().single()
+    if (row) {
+      const updated = choferFromDB(row)
+      setChoferes((prev) => prev.map(c => c.id === choferId ? updated : c))
+      if (openChofer?.id === choferId) setOpenChofer(updated)
+      if (prevCamionId) setCamiones((prev) => prev.map(c => c.id === prevCamionId ? { ...c, chofer: 'Sin asignar' } : c))
+      if (camionId) setCamiones((prev) => prev.map(c => c.id === camionId ? { ...c, chofer: data.nombre } : c))
+      showToast(`Chofer ${data.nombre} actualizado.`)
+    } else if (error) { showToast(`Error: ${error.message}`) }
+  }, [user, choferes, openChofer, showToast])
+
+  const handleAsignarCamion = useCallback(async (choferId: string, camionId: string) => {
+    const supabase = createClient()
+    // Desvinculate any existing chofer on that camion
+    const existing = choferes.find(c => c.camionId === camionId && c.id !== choferId)
+    if (existing) {
+      await supabase.from('camion_choferes').update({ camion_id: null }).eq('id', existing.id)
+      setChoferes((prev) => prev.map(c => c.id === existing.id ? { ...c, camionId: null } : c))
+    }
+    const { data: row, error } = await supabase.from('camion_choferes').update({ camion_id: camionId }).eq('id', choferId).select().single()
+    if (row) {
+      const updated = choferFromDB(row)
+      setChoferes((prev) => prev.map(c => c.id === choferId ? updated : c))
+      if (openChofer?.id === choferId) setOpenChofer(updated)
+      setCamiones((prev) => prev.map(c => c.id === camionId ? { ...c, chofer: updated.nombre } : c))
+      if (openCamion?.id === camionId) setCamionDetail((prev) => ({ ...prev, chofer: updated }))
+      showToast('Camión asignado.')
+    } else if (error) { showToast(`Error: ${error.message}`) }
+  }, [choferes, openChofer, openCamion, showToast])
+
+  const handleDesvincularChoferById = useCallback(async (choferId: string) => {
+    const supabase = createClient()
+    const chofer = choferes.find(c => c.id === choferId)
+    const { error } = await supabase.from('camion_choferes').update({ camion_id: null }).eq('id', choferId)
+    if (!error) {
+      setChoferes((prev) => prev.map(c => c.id === choferId ? { ...c, camionId: null } : c))
+      if (openChofer?.id === choferId) setOpenChofer((prev) => prev ? { ...prev, camionId: null } : prev)
+      if (chofer?.camionId) setCamiones((prev) => prev.map(c => c.id === chofer.camionId ? { ...c, chofer: 'Sin asignar' } : c))
+      showToast('Chofer desvinculado del camión.')
+    } else { showToast(`Error: ${error.message}`) }
+  }, [choferes, openChofer, showToast])
+
+  const handleToggleChoferActivo = useCallback(async (choferId: string, activo: boolean) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('camion_choferes').update({ activo }).eq('id', choferId)
+    if (!error) {
+      setChoferes((prev) => prev.map(c => c.id === choferId ? { ...c, activo } : c))
+      if (openChofer?.id === choferId) setOpenChofer((prev) => prev ? { ...prev, activo } : prev)
+      showToast(activo ? 'Chofer reactivado.' : 'Chofer dado de baja.')
+    } else { showToast(`Error: ${error.message}`) }
+  }, [openChofer, showToast])
 
   const handleAddTaller = useCallback(async (camionId: string, data: NuevaTallerVisitaData) => {
     const supabase = createClient()
@@ -550,6 +682,7 @@ function AppContent() {
           onBack={() => setOpenViaje(null)}
           onUpdateEstado={handleChangeStatus}
           onAddDoc={handleAddViajeDoc}
+          onEdit={() => setEditingViaje(openViaje)}
         />
       )
     }
@@ -570,9 +703,27 @@ function AppContent() {
           onAddTaller={handleAddTaller}
           onEditTaller={handleEditTaller}
           onDeleteTaller={handleDeleteTaller}
+          choferes={choferes.filter(c => !c.camionId && c.activo)}
           onSaveChofer={handleSaveChofer}
           onDesvincularChofer={handleDesvincularChofer}
+          onSeleccionarChofer={async (camionId, choferId) => handleAsignarCamion(choferId, camionId)}
           onEditarCamion={handleEditarCamion}
+        />
+      )
+    }
+
+    if (openChofer) {
+      return (
+        <ChoferDetailPage
+          chofer={openChofer}
+          camiones={camiones}
+          viajes={viajes}
+          clientes={clientes}
+          onBack={() => setOpenChofer(null)}
+          onEdit={() => { setEditingChofer(openChofer); setChoferFormOpen(true) }}
+          onToggleActivo={handleToggleChoferActivo}
+          onAsignarCamion={handleAsignarCamion}
+          onDesvincular={handleDesvincularChoferById}
         />
       )
     }
@@ -606,6 +757,15 @@ function AppContent() {
         return <ClientesPage clientes={clientes} viajes={viajes} onNuevoCliente={handleNuevoCliente} />
       case 'camiones':
         return <CamionesPage camiones={camiones} viajes={viajes} onNuevoCamion={handleNuevoCamion} onSaveChofer={handleSaveChofer} onSelectCamion={handleSelectCamion} openNewUnitModal={openCamionesModal} />
+      case 'choferes':
+        return (
+          <ChoferesPage
+            choferes={choferes}
+            camiones={camiones}
+            onViewChofer={(c) => { setActivePage('choferes'); setOpenChofer(c) }}
+            onNewChofer={() => { setEditingChofer(null); setChoferFormOpen(true) }}
+          />
+        )
       case 'reportes':
         return <ReportesPage />
       case 'configuracion':
@@ -615,7 +775,7 @@ function AppContent() {
     }
   }
 
-  const showTopbar = !openViaje && !openCamion
+  const showTopbar = !openViaje && !openCamion && !openChofer
 
   return (
     <div className="app-shell">
@@ -651,6 +811,33 @@ function AppContent() {
         onSave={handleSaveNew}
         onGoToCamiones={() => { setWizardOpen(false); setActivePage('camiones'); setOpenCamionesModal(true) }}
       />
+
+      {/* Edit trip wizard */}
+      <TripWizard
+        open={editingViaje !== null}
+        clientes={clientes}
+        camiones={camiones}
+        initialData={editingViaje ?? undefined}
+        onClose={() => setEditingViaje(null)}
+        onSave={(data) => { if (editingViaje) handleEditViaje(editingViaje.id, data) }}
+        onGoToCamiones={() => { setEditingViaje(null); setActivePage('camiones'); setOpenCamionesModal(true) }}
+      />
+
+      {/* Chofer form modal */}
+      {choferFormOpen && (
+        <ChoferFormModal
+          chofer={editingChofer ?? undefined}
+          camiones={camiones}
+          onClose={() => { setChoferFormOpen(false); setEditingChofer(null) }}
+          onSave={async (data, camionId) => {
+            if (editingChofer) {
+              await handleEditChofer(editingChofer.id, data, camionId)
+            } else {
+              await handleNuevoChofer(data, camionId)
+            }
+          }}
+        />
+      )}
 
       {/* Onboarding tutorial */}
       <OnboardingFlow
