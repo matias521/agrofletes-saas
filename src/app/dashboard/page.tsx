@@ -751,6 +751,7 @@ function AppContent() {
             onNewViaje={() => setWizardOpen(true)}
             onUpdateEstado={handleChangeStatus}
             onDeleteViaje={handleDelete}
+            onEditViaje={setEditingViaje}
           />
         )
       case 'clientes':

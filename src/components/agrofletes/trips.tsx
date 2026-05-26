@@ -63,6 +63,7 @@ interface TripsListPageProps {
   onNewViaje: () => void
   onUpdateEstado: (id: string, estado: EstadoKey) => void
   onDeleteViaje: (id: string) => void
+  onEditViaje?: (v: Viaje) => void
 }
 
 export function TripsListPage({
@@ -73,9 +74,13 @@ export function TripsListPage({
   onNewViaje,
   onUpdateEstado,
   onDeleteViaje,
+  onEditViaje,
 }: TripsListPageProps) {
   const [filterEstado, setFilterEstado] = useState<EstadoKey | 'todos'>('todos')
   const [filterCamion, setFilterCamion] = useState<string | 'todos'>('todos')
+  const [filterAnio, setFilterAnio] = useState<number | 'todos'>(new Date().getFullYear())
+  const [filterMes, setFilterMes] = useState<number | 'todos'>(new Date().getMonth() + 1)
+  const [showDateFilter, setShowDateFilter] = useState(false)
   const [search, setSearch] = useState('')
   const [menuTarget, setMenuTarget] = useState<{ rect: { bottom: number; right: number }; viaje: Viaje } | null>(null)
   const { showToast } = useToast()
@@ -84,9 +89,21 @@ export function TripsListPage({
 
   const camionesConViajes = camiones.filter((c) => viajes.some((v) => v.camionId === c.id))
 
+  const aniosConViajes = Array.from(new Set(viajes.map((v) => Number(v.fecha.slice(0, 4))))).sort((a, b) => b - a)
+
+  const mesesConViajes = Array.from(
+    new Set(
+      viajes
+        .filter((v) => filterAnio === 'todos' || Number(v.fecha.slice(0, 4)) === filterAnio)
+        .map((v) => Number(v.fecha.slice(5, 7)))
+    )
+  ).sort((a, b) => a - b)
+
   const filtered = viajes.filter((v) => {
     const matchCamion = filterCamion === 'todos' || v.camionId === filterCamion
     const matchEstado = filterEstado === 'todos' || v.estado === filterEstado
+    const matchAnio = filterAnio === 'todos' || Number(v.fecha.slice(0, 4)) === filterAnio
+    const matchMes = filterMes === 'todos' || Number(v.fecha.slice(5, 7)) === filterMes
     const q = search.toLowerCase()
     const cliente = clienteById(v.clienteId, clientes)
     const clienteNombre = cliente?.razon ?? cliente?.alias ?? ''
@@ -96,7 +113,7 @@ export function TripsListPage({
       clienteNombre.toLowerCase().includes(q) ||
       v.origen.toLowerCase().includes(q) ||
       v.destino.toLowerCase().includes(q)
-    return matchCamion && matchEstado && matchSearch
+    return matchCamion && matchEstado && matchAnio && matchMes && matchSearch
   })
 
   function openMenu(e: React.MouseEvent, viaje: Viaje) {
@@ -198,6 +215,19 @@ export function TripsListPage({
           <div style={{ width: 1, height: 24, background: 'var(--border-soft)', margin: '0 4px' }} />
 
           <button
+            className={`btn btn-ghost btn-sm btn-icon${showDateFilter ? ' active' : ''}`}
+            onClick={() => setShowDateFilter((v) => !v)}
+            title="Filtrar por fecha"
+            style={{
+              color: (filterAnio !== 'todos' || filterMes !== 'todos') ? 'var(--af-green)' : undefined,
+            }}
+          >
+            <Icon name="calendar_month" size={18} />
+          </button>
+
+          <div style={{ width: 1, height: 24, background: 'var(--border-soft)', margin: '0 4px' }} />
+
+          <button
             className={`chip${filterEstado === 'todos' ? ' active' : ''}`}
             onClick={() => setFilterEstado('todos')}
           >
@@ -220,12 +250,63 @@ export function TripsListPage({
           })}
         </div>
 
+        {/* Year / month filter */}
+        {showDateFilter && aniosConViajes.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+            {/* Años */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button
+                className={`chip${filterAnio === 'todos' ? ' active' : ''}`}
+                onClick={() => { setFilterAnio('todos'); setFilterMes('todos') }}
+              >
+                Todos los años
+              </button>
+              {aniosConViajes.map((anio) => (
+                <button
+                  key={anio}
+                  className={`chip${filterAnio === anio ? ' active' : ''}`}
+                  onClick={() => { setFilterAnio(anio); setFilterMes('todos') }}
+                >
+                  {anio}
+                </button>
+              ))}
+            </div>
+
+            {/* Meses — solo si hay un año seleccionado */}
+            {filterAnio !== 'todos' && mesesConViajes.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  className={`chip${filterMes === 'todos' ? ' active' : ''}`}
+                  onClick={() => setFilterMes('todos')}
+                >
+                  Todos los meses
+                </button>
+                {mesesConViajes.map((m) => {
+                  const label = new Date(2000, m - 1, 1).toLocaleDateString('es-AR', { month: 'long' })
+                  const count = viajes.filter(
+                    (v) => Number(v.fecha.slice(0, 4)) === filterAnio && Number(v.fecha.slice(5, 7)) === m
+                  ).length
+                  return (
+                    <button
+                      key={m}
+                      className={`chip${filterMes === m ? ' active' : ''}`}
+                      onClick={() => setFilterMes(m)}
+                    >
+                      {label.charAt(0).toUpperCase() + label.slice(1)}
+                      <span className="count">{count}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Table */}
         <div className="table-wrap">
           <table className="tbl">
             <thead>
               <tr>
-                <th>N° Viaje</th>
                 <th>Fecha</th>
                 <th>Cliente</th>
                 <th>Origen</th>
@@ -240,7 +321,7 @@ export function TripsListPage({
             <tbody>
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={10}>
+                  <td colSpan={9}>
                     <div className="empty">
                       <div className="ico">
                         <Icon name="local_shipping" size={30} />
@@ -290,6 +371,13 @@ export function TripsListPage({
               icon: 'open_in_new',
               onClick: () => {
                 onViewViaje(menuTarget.viaje)
+              },
+            },
+            {
+              label: 'Editar viaje',
+              icon: 'edit',
+              onClick: () => {
+                onEditViaje?.(menuTarget.viaje)
               },
             },
             { separator: true },
@@ -358,11 +446,6 @@ function DTRow({ viaje: v, clientes, onView, onMenu }: DTRowProps) {
 
   return (
     <tr style={{ cursor: 'pointer' }} onClick={onView}>
-      <td>
-        <span className="num" style={{ fontWeight: 600 }}>
-          #{v.numero}
-        </span>
-      </td>
       <td className="muted">{formatDate(v.fecha)}</td>
       <td style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {clienteNombre}
