@@ -2,7 +2,7 @@
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type EstadoKey = 'BORRADOR' | 'EN_TRANSITO' | 'ENTREGADO' | 'LIQUIDADO' | 'CANCELADO'
+export type EstadoKey = 'PROGRAMADO' | 'REALIZADO' | 'LIQUIDADO'
 
 export type TipoCarga =
   | 'soja'
@@ -74,6 +74,8 @@ export interface Camion {
   acopladoLargo?: number | null
   acopladoAncho?: number | null
   acopladoAlto?: number | null
+  acopladoCabezas?: number | null
+  acopladoPisos?: number | null
   // Certificaciones adicionales
   catCert?: boolean
   rutaCert?: boolean
@@ -108,6 +110,7 @@ export interface Viaje {
   tipoCargaLabel: string
   toneladas: number
   monto: number
+  porcentaje: number | null
   estado: EstadoKey
   docs: string[]
   notas: string
@@ -143,6 +146,18 @@ export interface CamionDB {
   grain_cert?: string | null
   has_gps?: boolean | null
   km_acumulados?: number | null
+  acoplado_marca?: string | null
+  acoplado_modelo?: string | null
+  acoplado_anio?: number | null
+  acoplado_peso_max_ton?: number | null
+  acoplado_largo?: number | null
+  acoplado_ancho?: number | null
+  acoplado_alto?: number | null
+  acoplado_cabezas?: number | null
+  acoplado_pisos?: number | null
+  cat_cert?: boolean | null
+  ruta_cert?: boolean | null
+  hacienda_cert?: boolean | null
   created_at: string
 }
 
@@ -161,6 +176,7 @@ export interface ViajeDB {
   tipo_carga_label: string | null
   toneladas: number | null
   monto: number | null
+  porcentaje: number | null
   estado: EstadoKey
   docs: string[]
   notas: string | null
@@ -184,11 +200,9 @@ export const USER = {
 }
 
 export const ESTADOS: Record<EstadoKey, { label: string; bg: string; fg: string; dot: string }> = {
-  BORRADOR:    { label: 'Borrador',    bg: 'var(--st-borrador-bg)',  fg: 'var(--st-borrador-fg)',  dot: 'var(--st-borrador-dot)' },
-  EN_TRANSITO: { label: 'En tránsito', bg: 'var(--st-transito-bg)', fg: 'var(--st-transito-fg)', dot: 'var(--st-transito-dot)' },
-  ENTREGADO:   { label: 'Entregado',   bg: 'var(--st-entregado-bg)', fg: 'var(--st-entregado-fg)', dot: 'var(--st-entregado-dot)' },
-  LIQUIDADO:   { label: 'Liquidado',   bg: 'var(--st-liquidado-bg)', fg: 'var(--st-liquidado-fg)', dot: 'var(--st-liquidado-dot)' },
-  CANCELADO:   { label: 'Cancelado',   bg: 'var(--st-cancelado-bg)', fg: 'var(--st-cancelado-fg)', dot: 'var(--st-cancelado-dot)' },
+  PROGRAMADO: { label: 'Programado', bg: 'var(--st-borrador-bg)',   fg: 'var(--st-borrador-fg)',   dot: 'var(--st-borrador-dot)' },
+  REALIZADO:  { label: 'Realizado',  bg: 'var(--st-entregado-bg)',  fg: 'var(--st-entregado-fg)',  dot: 'var(--st-entregado-dot)' },
+  LIQUIDADO:  { label: 'Liquidado',  bg: 'var(--st-liquidado-bg)',  fg: 'var(--st-liquidado-fg)',  dot: 'var(--st-liquidado-dot)' },
 }
 
 export const TIPOS_CAMION: Record<TipoCamion, { label: string; icon: string }> = {
@@ -385,7 +399,8 @@ export const VIAJES_SEED: Viaje[] = [
     tipoCargaLabel: 'Soja',
     toneladas: 26.4,
     monto: 1_108_800,
-    estado: 'EN_TRANSITO',
+    porcentaje: null,
+    estado: 'REALIZADO',
     docs: [],
     notas: 'Cliente solicita llegada antes de las 10 hs.',
   },
@@ -403,7 +418,8 @@ export const VIAJES_SEED: Viaje[] = [
     tipoCargaLabel: 'Maíz',
     toneladas: 29.8,
     monto: 1_162_200,
-    estado: 'EN_TRANSITO',
+    porcentaje: null,
+    estado: 'REALIZADO',
     docs: [],
     notas: '',
   },
@@ -421,7 +437,8 @@ export const VIAJES_SEED: Viaje[] = [
     tipoCargaLabel: 'Trigo',
     toneladas: 24.1,
     monto: 1_084_500,
-    estado: 'ENTREGADO',
+    porcentaje: null,
+    estado: 'REALIZADO',
     docs: [],
     notas: '',
   },
@@ -439,6 +456,7 @@ export const VIAJES_SEED: Viaje[] = [
     tipoCargaLabel: 'Cebada',
     toneladas: 22.5,
     monto: 922_500,
+    porcentaje: null,
     estado: 'LIQUIDADO',
     docs: [],
     notas: '',
@@ -457,6 +475,7 @@ export const VIAJES_SEED: Viaje[] = [
     tipoCargaLabel: 'Soja',
     toneladas: 27.2,
     monto: 1_033_600,
+    porcentaje: null,
     estado: 'LIQUIDADO',
     docs: [],
     notas: '',
@@ -475,7 +494,8 @@ export const VIAJES_SEED: Viaje[] = [
     tipoCargaLabel: 'Maíz',
     toneladas: 30.0,
     monto: 1_125_000,
-    estado: 'CANCELADO',
+    porcentaje: null,
+    estado: 'REALIZADO',
     docs: [],
     notas: 'Cancelado por el cliente por problemas en destino.',
   },
@@ -493,7 +513,8 @@ export const VIAJES_SEED: Viaje[] = [
     tipoCargaLabel: 'Fertilizante',
     toneladas: 18.0,
     monto: 720_000,
-    estado: 'ENTREGADO',
+    porcentaje: null,
+    estado: 'REALIZADO',
     docs: [],
     notas: '',
   },
@@ -511,7 +532,8 @@ export const VIAJES_SEED: Viaje[] = [
     tipoCargaLabel: 'Girasol',
     toneladas: 25.6,
     monto: 1_075_200,
-    estado: 'BORRADOR',
+    porcentaje: null,
+    estado: 'REALIZADO',
     docs: [],
     notas: 'Pendiente de confirmación de fecha.',
   },
@@ -528,7 +550,7 @@ export const TIMELINE_V1023: TimelineItem[] = [
   },
   {
     id: 'tl2',
-    estado: 'BORRADOR',
+    estado: 'REALIZADO',
     fecha: '10/05/2025',
     hora: '08:15',
     desc: 'Documentación cargada: Carta de Porte N° 00123456.',
@@ -536,7 +558,7 @@ export const TIMELINE_V1023: TimelineItem[] = [
   },
   {
     id: 'tl3',
-    estado: 'EN_TRANSITO',
+    estado: 'REALIZADO',
     fecha: '10/05/2025',
     hora: '09:00',
     desc: 'Unidad partió desde Pergamino. Chofer confirmó salida.',
@@ -587,6 +609,18 @@ export function camionFromDB(row: CamionDB): Camion {
     grainCert: (row.grain_cert as GrainCert) ?? 'none',
     hasGps: row.has_gps ?? false,
     kmAcumulados: row.km_acumulados ?? 0,
+    acopladoMarca: row.acoplado_marca ?? undefined,
+    acopladoModelo: row.acoplado_modelo ?? undefined,
+    acopladoAnio: row.acoplado_anio ?? undefined,
+    acopladoPesoMaxTon: row.acoplado_peso_max_ton ?? null,
+    acopladoLargo: row.acoplado_largo ?? null,
+    acopladoAncho: row.acoplado_ancho ?? null,
+    acopladoAlto: row.acoplado_alto ?? null,
+    acopladoCabezas: row.acoplado_cabezas ?? null,
+    acopladoPisos: row.acoplado_pisos ?? null,
+    catCert: row.cat_cert ?? false,
+    rutaCert: row.ruta_cert ?? false,
+    haciendaCert: row.hacienda_cert ?? false,
   }
 }
 
@@ -605,6 +639,7 @@ export function viajeFromDB(row: ViajeDB): Viaje {
     tipoCargaLabel: row.tipo_carga_label ?? '',
     toneladas: Number(row.toneladas ?? 0),
     monto: Number(row.monto ?? 0),
+    porcentaje: row.porcentaje !== null && row.porcentaje !== undefined ? Number(row.porcentaje) : null,
     estado: row.estado,
     docs: row.docs ?? [],
     notas: row.notas ?? '',
@@ -674,6 +709,7 @@ export interface Chofer {
   antiguedad: string
   viajesRealizados: number
   kmConducidos: number
+  porcentajeBase: number
 }
 
 export interface DocVehiculo {
@@ -768,6 +804,132 @@ export interface ChoferDB {
   antiguedad: string | null
   viajes_realizados: number | null
   km_conducidos: number | null
+  porcentaje_liquidacion: number | null
+}
+
+// ── Liquidaciones ─────────────────────────────────────────────────────────────
+
+export type LiquidacionEstado = 'a_pagar' | 'pagado' | 'anulado'
+
+export interface LiquidacionItem {
+  id: string
+  liquidacionId: string
+  viajeId: string
+  viajeNumero?: number
+  viajeOrigen?: string
+  viajeDestino?: string
+  montoViaje: number
+  porcentaje: number
+  montoChofer: number
+}
+
+export interface Liquidacion {
+  id: string
+  choferId: string
+  choferNombre?: string
+  periodoDede: string
+  periodoHasta: string
+  totalBruto: number
+  totalChofer: number
+  bonusViajesMin?: number
+  bonusPorcentaje?: number
+  bonusMonto: number
+  estado: LiquidacionEstado
+  fechaPago?: string
+  notas?: string
+  createdAt: string
+  items?: LiquidacionItem[]
+}
+
+export interface ChoferLiquidacionResumen {
+  choferId: string
+  camionId: string | null
+  camionPatente: string
+  choferNombre: string
+  choferIniciales: string
+  choferPorcentajeBase: number
+  camionInfo: string
+  facturacionBruta: number
+  totalViajes: number
+  totalCorresponde: number
+  totalPagado: number
+  deudaPendiente: number
+  estado: 'pendiente' | 'parcial' | 'al_dia' | 'sin_viajes'
+  viajesPendientes: {
+    id: string
+    numero: number
+    origen: string
+    destino: string
+    monto: number
+    porcentaje: number
+  }[]
+}
+
+export interface NuevaLiquidacionForm {
+  choferId: string
+  periodoDede: string
+  periodoHasta: string
+  items: { viajeId: string; montoViaje: number; porcentaje: number; montoChofer: number }[]
+  bonusViajesMin?: number
+  bonusPorcentaje?: number
+  bonusMonto: number
+  totalBruto: number
+  totalChofer: number
+}
+
+export interface LiquidacionDB {
+  id: string
+  user_id: string
+  chofer_id: string
+  periodo_desde: string
+  periodo_hasta: string
+  total_bruto: number
+  total_chofer: number
+  bonus_viajes_min: number | null
+  bonus_porcentaje: number | null
+  bonus_monto: number
+  estado: string
+  fecha_pago: string | null
+  notas: string | null
+  created_at: string
+}
+
+export interface LiquidacionItemDB {
+  id: string
+  liquidacion_id: string
+  viaje_id: string
+  monto_viaje: number
+  porcentaje: number
+  monto_chofer: number
+}
+
+export function liquidacionFromDB(row: LiquidacionDB): Liquidacion {
+  return {
+    id: row.id,
+    choferId: row.chofer_id,
+    periodoDede: row.periodo_desde,
+    periodoHasta: row.periodo_hasta,
+    totalBruto: Number(row.total_bruto),
+    totalChofer: Number(row.total_chofer),
+    bonusViajesMin: row.bonus_viajes_min ?? undefined,
+    bonusPorcentaje: row.bonus_porcentaje ?? undefined,
+    bonusMonto: Number(row.bonus_monto),
+    estado: row.estado as LiquidacionEstado,
+    fechaPago: row.fecha_pago ?? undefined,
+    notas: row.notas ?? undefined,
+    createdAt: row.created_at,
+  }
+}
+
+export function liquidacionItemFromDB(row: LiquidacionItemDB): LiquidacionItem {
+  return {
+    id: row.id,
+    liquidacionId: row.liquidacion_id,
+    viajeId: row.viaje_id,
+    montoViaje: Number(row.monto_viaje),
+    porcentaje: Number(row.porcentaje),
+    montoChofer: Number(row.monto_chofer),
+  }
 }
 
 export interface DocVehiculoDB {
@@ -990,6 +1152,7 @@ export function choferFromDB(row: ChoferDB): Chofer {
     antiguedad: row.antiguedad ?? '',
     viajesRealizados: row.viajes_realizados ?? 0,
     kmConducidos: row.km_conducidos ?? 0,
+    porcentajeBase: Number(row.porcentaje_liquidacion ?? 0),
   }
 }
 

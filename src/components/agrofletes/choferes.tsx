@@ -543,6 +543,7 @@ export function ChoferFormModal({ chofer, camiones, onClose, onSave }: ChoferFor
   const [dni, setDni] = useState(chofer?.dni ?? '')
   const [tel, setTel] = useState(chofer?.tel ?? '')
   const [email, setEmail] = useState(chofer?.email ?? '')
+  const [porcentaje, setPorcentaje] = useState(String(chofer?.porcentajeBase ?? 0))
   const [licOpen, setLicOpen] = useState(!!(chofer?.licencia.cat))
   const [licCat, setLicCat] = useState(chofer?.licencia.cat ?? 'E')
   const [licNumero, setLicNumero] = useState(chofer?.licencia.numero ?? '')
@@ -564,7 +565,7 @@ export function ChoferFormModal({ chofer, camiones, onClose, onSave }: ChoferFor
     if (!nombre.trim()) return
     setSaving(true)
     await onSave(
-      { nombre: nombre.trim(), dni, tel, email, licCat, licNumero, licVenc, psicofisicoVenc: psicVenc, libretaSanidadVenc: libVenc },
+      { nombre: nombre.trim(), dni, tel, email, porcentaje, licCat, licNumero, licVenc, psicofisicoVenc: psicVenc, libretaSanidadVenc: libVenc },
       camionId || undefined
     )
     onClose()
@@ -626,6 +627,21 @@ export function ChoferFormModal({ chofer, camiones, onClose, onSave }: ChoferFor
                 </Field>
                 <Field label="Email" style={{ gridColumn: 'span 2' }}>
                   <Input type="email" placeholder="ej. chofer@mail.com" value={email} onChange={e => setEmail(e.target.value)} />
+                </Field>
+                <Field label="% de liquidación base">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      placeholder="0"
+                      value={porcentaje}
+                      onChange={e => setPorcentaje(e.target.value)}
+                      style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}
+                    />
+                    <span style={{ fontSize: 14, color: 'var(--text-tertiary)', fontWeight: 600 }}>%</span>
+                  </div>
                 </Field>
               </div>
             </div>

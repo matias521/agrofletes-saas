@@ -162,14 +162,14 @@ export function DashboardPage({
     })
   }, [viajes, filterCarga, filterCliente])
 
-  const enTransito = viajesMetrics.filter((v) => v.estado === 'EN_TRANSITO').length
-  const entregados = viajesMetrics.filter((v) => v.estado === 'ENTREGADO').length
+  const programados = viajesMetrics.filter((v) => v.estado === 'PROGRAMADO').length
+  const realizados = viajesMetrics.filter((v) => v.estado === 'REALIZADO').length
   const totalTons = viajesFiltrados.reduce((acc, v) => acc + v.toneladas, 0)
   const totalFacturado = viajesFiltrados
-    .filter((v) => v.estado === 'LIQUIDADO' || v.estado === 'ENTREGADO')
+    .filter((v) => v.estado === 'LIQUIDADO' || v.estado === 'REALIZADO')
     .reduce((acc, v) => acc + v.monto, 0)
 
-  const totalAlertas = (enTransito > 0 ? 1 : 0) + alertasFlota.length
+  const totalAlertas = (programados > 0 ? 1 : 0) + alertasFlota.length
 
   const recentViajes = [...viajesFiltrados]
     .sort((a, b) => b.fecha.localeCompare(a.fecha))
@@ -255,8 +255,8 @@ export function DashboardPage({
       <div className="page-body" style={{ flex: 1, overflowY: 'auto' }}>
         {/* Metrics */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-          <MetricCard label="Viajes en tránsito" value={String(enTransito)} icon="local_shipping" trendText="+1 vs ayer" trend="up" sub="este mes" />
-          <MetricCard label="Entregados" value={String(entregados)} icon="check_circle" trendText="+3 vs semana ant." trend="up" sub="este mes" />
+          <MetricCard label="Programados" value={String(programados)} icon="event" trendText="" trend="up" sub="próximos viajes" />
+          <MetricCard label="Realizados" value={String(realizados)} icon="check_circle" trendText="" trend="up" sub="este mes" />
           <MetricCard label="Toneladas" value={`${totalTons.toLocaleString('es-AR', { maximumFractionDigits: 0 })} tn`} icon="scale" trendText="+12%" trend="up" sub="vs mes anterior" />
           <MetricCard label="Facturación liquidada" value={formatMoney(totalFacturado)} icon="payments" trendText="+8%" trend="up" sub="vs mes anterior" />
         </div>
@@ -303,8 +303,8 @@ export function DashboardPage({
               {totalAlertas === 0 && (
                 <AlertItem type="info" icon="check_circle" title="Sin alertas activas" desc="Todos los viajes y la flota están al día" />
               )}
-              {enTransito > 0 && (
-                <AlertItem type="info" icon="local_shipping" title={`${enTransito} viaje${enTransito > 1 ? 's' : ''} en tránsito`} desc="Monitoreá el estado desde la sección Viajes" />
+              {programados > 0 && (
+                <AlertItem type="info" icon="event" title={`${programados} viaje${programados > 1 ? 's' : ''} programado${programados > 1 ? 's' : ''}`} desc="Próximos viajes cargados en la sección Viajes" />
               )}
               {alertasFlota.map((a) => {
                 const st = estadoVencimiento(a.venc)

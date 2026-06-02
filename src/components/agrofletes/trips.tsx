@@ -381,40 +381,23 @@ export function TripsListPage({
               },
             },
             { separator: true },
-            {
-              label: 'Marcar en tránsito',
-              icon: 'local_shipping',
+            ...(menuTarget.viaje.estado !== 'PROGRAMADO' ? [{
+              label: 'Marcar como Programado',
+              icon: 'event',
               onClick: () => {
-                onUpdateEstado(menuTarget.viaje.id, 'EN_TRANSITO')
-                showToast(`Viaje #${menuTarget.viaje.numero} marcado en tránsito`)
+                onUpdateEstado(menuTarget.viaje.id, 'PROGRAMADO')
+                showToast(`Viaje #${menuTarget.viaje.numero} marcado como programado`)
               },
-            },
-            {
-              label: 'Marcar entregado',
+            }] : []),
+            ...(menuTarget.viaje.estado !== 'REALIZADO' && menuTarget.viaje.estado !== 'LIQUIDADO' ? [{
+              label: 'Marcar como Realizado',
               icon: 'check_circle',
               onClick: () => {
-                onUpdateEstado(menuTarget.viaje.id, 'ENTREGADO')
-                showToast(`Viaje #${menuTarget.viaje.numero} marcado como entregado`)
+                onUpdateEstado(menuTarget.viaje.id, 'REALIZADO')
+                showToast(`Viaje #${menuTarget.viaje.numero} marcado como realizado`)
               },
-            },
-            {
-              label: 'Liquidar',
-              icon: 'payments',
-              onClick: () => {
-                onUpdateEstado(menuTarget.viaje.id, 'LIQUIDADO')
-                showToast(`Viaje #${menuTarget.viaje.numero} liquidado`)
-              },
-            },
+            }] : []),
             { separator: true },
-            {
-              label: 'Cancelar viaje',
-              icon: 'cancel',
-              danger: true,
-              onClick: () => {
-                onUpdateEstado(menuTarget.viaje.id, 'CANCELADO')
-                showToast(`Viaje cancelado`, 'error')
-              },
-            },
             {
               label: 'Eliminar',
               icon: 'delete',
@@ -603,9 +586,8 @@ export function TripDetailPage({ viaje, clientes, camiones, onBack, onUpdateEsta
   const camion = camionById(viaje.camionId, camiones)
 
   function nextEstado(current: EstadoKey): EstadoKey | null {
-    const flow: EstadoKey[] = ['BORRADOR', 'EN_TRANSITO', 'ENTREGADO', 'LIQUIDADO']
-    const idx = flow.indexOf(current)
-    return idx >= 0 && idx < flow.length - 1 ? flow[idx + 1] : null
+    if (current === 'PROGRAMADO') return 'REALIZADO'
+    return null
   }
 
   const next = nextEstado(viaje.estado)
