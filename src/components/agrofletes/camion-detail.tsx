@@ -643,6 +643,7 @@ export interface NuevoChoferData {
   dni: string
   tel: string
   email: string
+  porcentaje: string
   licCat: string
   licNumero: string
   licVenc: string
@@ -661,6 +662,7 @@ export function ChoferModal({ camion, chofer, onClose, onSave, onBack }: {
   const [dni, setDni] = useState(chofer?.dni ?? '')
   const [tel, setTel] = useState(chofer?.tel ?? '')
   const [email, setEmail] = useState(chofer?.email ?? '')
+  const [porcentaje, setPorcentaje] = useState(String(chofer?.porcentajeBase ?? 0))
   const [licOpen, setLicOpen] = useState(!!(chofer?.licencia.cat))
   const [licCat, setLicCat] = useState(chofer?.licencia.cat ?? 'E')
   const [licNumero, setLicNumero] = useState(chofer?.licencia.numero ?? '')
@@ -677,7 +679,7 @@ export function ChoferModal({ camion, chofer, onClose, onSave, onBack }: {
   async function handleSubmit() {
     if (!nombre.trim()) return
     setSaving(true)
-    await onSave({ nombre: nombre.trim(), dni, tel, email, licCat, licNumero, licVenc, psicofisicoVenc: psicVenc, libretaSanidadVenc: libVenc })
+    await onSave({ nombre: nombre.trim(), dni, tel, email, porcentaje, licCat, licNumero, licVenc, psicofisicoVenc: psicVenc, libretaSanidadVenc: libVenc })
     onClose()
   }
 
@@ -750,6 +752,21 @@ export function ChoferModal({ camion, chofer, onClose, onSave, onBack }: {
                 </Field>
                 <Field label="Email" style={{ gridColumn: 'span 2' }}>
                   <Input type="email" placeholder="ej. chofer@mail.com" value={email} onChange={e => setEmail(e.target.value)} />
+                </Field>
+                <Field label="% de liquidación base">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      placeholder="0"
+                      value={porcentaje}
+                      onChange={e => setPorcentaje(e.target.value)}
+                      style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}
+                    />
+                    <span style={{ fontSize: 14, color: 'var(--text-tertiary)', fontWeight: 600 }}>%</span>
+                  </div>
                 </Field>
               </div>
             </div>
@@ -1705,32 +1722,51 @@ function CamNeumaticosTab({ camion, tires, onSetTires }: { camion: Camion; tires
   const alerta = tires.filter((t) => tireWearLevel(tireWearPct(t)) === 'alerta').length
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1.7fr 1fr', gap: 16 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Card
-          title={`Vista superior — ${layout.label}`}
-          actions={
-            <Button variant="secondary" size="sm" icon="refresh" onClick={() => { onSetTires([]); setShowForm(true) }}>
-              Recargar todos
-            </Button>
-          }
-        >
-          <TruckTopDown camion={camion} tires={tires} selectedCode={selectedCode} onSelectTire={setSelectedCode} />
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 16, padding: 12, background: 'var(--surface-muted)', borderRadius: 8, fontSize: 12 }}>
-            {[
-              { label: '0–55% · Óptimo', color: '#7CC944' },
-              { label: '55–80% · Alerta', color: '#F5A623' },
-              { label: '80–100% · Crítico', color: '#E03E3E' },
-            ].map((l) => (
-              <div key={l.label} style={{ display: 'flex', gap: 6, alignItems: 'center', color: 'var(--text-secondary)' }}>
-                <span style={{ width: 14, height: 14, borderRadius: 4, background: l.color, border: '1px solid rgba(0,0,0,.1)', display: 'block' }} />
-                {l.label}
-              </div>
-            ))}
-          </div>
-        </Card>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-        <Card title="Listado de neumáticos" bodyStyle={{ padding: 0 }}>
+      {/* Métricas rápidas — ancho completo */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+        <div style={{ padding: '12px 16px', background: 'var(--af-green-bg)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 26, fontWeight: 700, color: 'var(--af-green-press)' }}>{promedio}%</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Desgaste promedio</div>
+        </div>
+        <div style={{ padding: '12px 16px', background: '#FFF3E0', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 26, fontWeight: 700, color: '#B25800' }}>{alerta}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>En alerta</div>
+        </div>
+        <div style={{ padding: '12px 16px', background: 'var(--st-cancelado-bg)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 26, fontWeight: 700, color: 'var(--st-cancelado-fg)' }}>{criticos}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Críticos</div>
+        </div>
+      </div>
+
+      {/* Diagrama — ancho completo */}
+      <Card
+        title={`Vista superior — ${layout.label}`}
+        actions={
+          <Button variant="secondary" size="sm" icon="refresh" onClick={() => { onSetTires([]); setShowForm(true) }}>
+            Recargar todos
+          </Button>
+        }
+      >
+        <TruckTopDown camion={camion} tires={tires} selectedCode={selectedCode} onSelectTire={setSelectedCode} />
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 16, padding: 12, background: 'var(--surface-muted)', borderRadius: 8, fontSize: 12 }}>
+          {[
+            { label: '0–55% · Óptimo', color: '#7CC944' },
+            { label: '55–80% · Alerta', color: '#F5A623' },
+            { label: '80–100% · Crítico', color: '#E03E3E' },
+          ].map((l) => (
+            <div key={l.label} style={{ display: 'flex', gap: 6, alignItems: 'center', color: 'var(--text-secondary)' }}>
+              <span style={{ width: 14, height: 14, borderRadius: 4, background: l.color, border: '1px solid rgba(0,0,0,.1)', display: 'block' }} />
+              {l.label}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Lista + panel de detalle — side by side solo en la parte inferior */}
+      <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 320px' : '1fr', gap: 16, alignItems: 'start' }}>
+        <Card title={`Listado de neumáticos · ${tires.length} unidades`} bodyStyle={{ padding: 0 }}>
           <table className="tbl">
             <thead>
               <tr>
@@ -1738,7 +1774,7 @@ function CamNeumaticosTab({ camion, tires, onSetTires }: { camion: Camion; tires
                 <th>Marca / Modelo</th>
                 <th>Medida</th>
                 <th style={{ textAlign: 'right' }}>Km usados</th>
-                <th style={{ width: 180 }}>Desgaste</th>
+                <th style={{ width: 160 }}>Desgaste</th>
               </tr>
             </thead>
             <tbody>
@@ -1747,7 +1783,7 @@ function CamNeumaticosTab({ camion, tires, onSetTires }: { camion: Camion; tires
                 const level = tireWearLevel(pct)
                 const color = level === 'critico' ? '#E03E3E' : level === 'alerta' ? '#F5A623' : 'var(--af-green)'
                 return (
-                  <tr key={t.code} className={t.code === selectedCode ? 'selected' : ''} onClick={() => setSelectedCode(t.code)} style={{ cursor: 'pointer' }}>
+                  <tr key={t.code} className={t.code === selectedCode ? 'selected' : ''} onClick={() => setSelectedCode(t.code === selectedCode ? null : t.code)} style={{ cursor: 'pointer' }}>
                     <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 700 }}>{t.code}</td>
                     <td>
                       <div style={{ fontWeight: 500 }}>{t.marca}</div>
@@ -1768,40 +1804,26 @@ function CamNeumaticosTab({ camion, tires, onSetTires }: { camion: Camion; tires
               })}
             </tbody>
           </table>
+          {!selected && (
+            <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-tertiary)', fontSize: 13 }}>
+              <Icon name="touch_app" size={16} />
+              Tocá un neumático en el plano o en la lista para ver el detalle.
+            </div>
+          )}
         </Card>
-      </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'sticky', top: 16, alignSelf: 'start' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-          <div style={{ padding: 12, background: 'var(--af-green-bg)', borderRadius: 8, textAlign: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: 'var(--af-green-press)' }}>{promedio}%</div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Promedio</div>
-          </div>
-          <div style={{ padding: 12, background: '#FFF3E0', borderRadius: 8, textAlign: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: '#B25800' }}>{alerta}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>En alerta</div>
-          </div>
-          <div style={{ padding: 12, background: 'var(--st-cancelado-bg)', borderRadius: 8, textAlign: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 22, fontWeight: 700, color: 'var(--st-cancelado-fg)' }}>{criticos}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>Críticos</div>
-          </div>
-        </div>
-
-        {selected ? (
-          <TireDetailPanel
-            key={selected.code}
-            tire={selected}
-            onChange={(updated) => onSetTires(tires.map((t) => (t.code === updated.code ? updated : t)))}
-            onReplace={(code) => {
-              const km = tires.find((t) => t.code === code)?.kmActual ?? 0
-              const today = new Date().toISOString().slice(0, 10)
-              onSetTires(tires.map((t) => (t.code === code ? { ...t, kmInicial: km, kmActual: km, fechaInst: today } : t)))
-            }}
-          />
-        ) : (
-          <div style={{ padding: 24, background: 'var(--surface-card)', border: '1px dashed var(--border-strong)', borderRadius: 12, textAlign: 'center', color: 'var(--text-tertiary)' }}>
-            <Icon name="touch_app" size={28} />
-            <div style={{ fontSize: 13, marginTop: 8 }}>Tocá un neumático en el plano para ver el detalle y editarlo.</div>
+        {selected && (
+          <div style={{ position: 'sticky', top: 16 }}>
+            <TireDetailPanel
+              key={selected.code}
+              tire={selected}
+              onChange={(updated) => onSetTires(tires.map((t) => (t.code === updated.code ? updated : t)))}
+              onReplace={(code) => {
+                const km = tires.find((t) => t.code === code)?.kmActual ?? 0
+                const today = new Date().toISOString().slice(0, 10)
+                onSetTires(tires.map((t) => (t.code === code ? { ...t, kmInicial: km, kmActual: km, fechaInst: today } : t)))
+              }}
+            />
           </div>
         )}
       </div>
@@ -1860,15 +1882,143 @@ function camionToFormData(c: Camion): NuevaUnidadData {
     acopladoLargo: c.acopladoLargo != null ? String(c.acopladoLargo) : '',
     acopladoAncho: c.acopladoAncho != null ? String(c.acopladoAncho) : '',
     acopladoAlto: c.acopladoAlto != null ? String(c.acopladoAlto) : '',
+    acopladoCabezas: c.acopladoCabezas != null ? String(c.acopladoCabezas) : '',
+    acopladoPisos: c.acopladoPisos != null ? String(c.acopladoPisos) : '',
     catCert: c.catCert ?? false,
     rutaCert: c.rutaCert ?? false,
     haciendaCert: c.haciendaCert ?? false,
   }
 }
 
+// ── FICHA TÉCNICA MODAL ───────────────────────────────────────────────────────
+
+const TIPOS_ACOPLADO_ANIMALES_DETAIL = ['jaula_hacienda']
+const TIPOS_ACOPLADO_CEREALES_DETAIL = ['tolva', 'acoplado', 'semirremolque']
+const TIPOS_SIN_ACOPLADO_DETAIL = ['chasis', 'hidrogua']
+
+function FichaTecnicaModal({ camion, onClose }: { camion: Camion; onClose: () => void }) {
+  const tipoInfo = TIPOS_CAMION[camion.tipo as keyof typeof TIPOS_CAMION] ?? { label: camion.tipo, icon: 'local_shipping' }
+  const tieneAcoplado = !TIPOS_SIN_ACOPLADO_DETAIL.includes(camion.tipo)
+  const esAnimales = TIPOS_ACOPLADO_ANIMALES_DETAIL.includes(camion.tipo)
+  const esCereales = TIPOS_ACOPLADO_CEREALES_DETAIL.includes(camion.tipo)
+
+  const hayDatosAcoplado =
+    camion.acopladoMarca || camion.acopladoModelo || camion.acopladoPesoMaxTon != null ||
+    camion.acopladoLargo || camion.acopladoCabezas
+
+  function Section({ title, children }: { title: string; children: React.ReactNode }) {
+    return (
+      <div>
+        <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: 'var(--text-tertiary)', marginBottom: 12, paddingBottom: 6, borderBottom: '1px solid var(--border-soft)' }}>
+          {title}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          {children}
+        </div>
+      </div>
+    )
+  }
+
+  function Row({ label, value }: { label: string; value?: string | number | null | boolean }) {
+    if (value == null || value === '' || value === false) return null
+    const display = typeof value === 'boolean' ? (value ? 'Sí' : 'No') : String(value)
+    return (
+      <div>
+        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>{label}</div>
+        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{display}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={onClose}
+    >
+      <div
+        style={{ background: 'var(--surface-card)', borderRadius: 16, width: 560, maxWidth: '100%', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', boxShadow: 'var(--shadow-xl)', display: 'flex', flexDirection: 'column' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ padding: '22px 26px 18px', borderBottom: '1px solid var(--border-soft)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, background: 'var(--surface-card)', zIndex: 1, borderRadius: '16px 16px 0 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'var(--af-green-bg)', color: 'var(--af-green-press)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
+              <Icon name={tipoInfo.icon} size={22} />
+            </div>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, color: 'var(--text-primary)' }}>Ficha técnica</div>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>{camion.patente}</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-tertiary)', borderRadius: 6 }}>
+            <Icon name="close" size={18} />
+          </button>
+        </div>
+
+        <div style={{ padding: '24px 26px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Vehículo principal */}
+          <Section title="Vehículo">
+            <Row label="Tipo" value={tipoInfo.label} />
+            <Row label="Patente" value={camion.patente} />
+            <Row label="Marca" value={camion.marca || null} />
+            <Row label="Modelo" value={camion.modelo || null} />
+            <Row label="Año" value={camion.anio > 0 ? camion.anio : null} />
+            <Row label="Peso máx." value={camion.pesoMaxTon != null ? `${camion.pesoMaxTon} tn` : null} />
+            {camion.volumenM3 != null && <Row label="Volumen" value={`${camion.volumenM3} m³`} />}
+            <Row label="GPS" value={camion.hasGps ? 'Instalado' : null} />
+          </Section>
+
+          {/* Acoplado */}
+          {tieneAcoplado && hayDatosAcoplado && (
+            <Section title={esAnimales ? 'Acoplado — Animales' : esCereales ? 'Acoplado — Cereales / Fertilizantes' : 'Acoplado / Remolque'}>
+              <Row label="Marca" value={camion.acopladoMarca || null} />
+              <Row label="Modelo" value={camion.acopladoModelo || null} />
+              <Row label="Año" value={camion.acopladoAnio && camion.acopladoAnio > 0 ? camion.acopladoAnio : null} />
+              <Row label="Tn máximas" value={camion.acopladoPesoMaxTon != null ? `${camion.acopladoPesoMaxTon} tn` : null} />
+              {!esAnimales && !esCereales && (
+                <>
+                  <Row label="Largo" value={camion.acopladoLargo != null ? `${camion.acopladoLargo} m` : null} />
+                  <Row label="Ancho" value={camion.acopladoAncho != null ? `${camion.acopladoAncho} m` : null} />
+                  <Row label="Alto" value={camion.acopladoAlto != null ? `${camion.acopladoAlto} m` : null} />
+                </>
+              )}
+              {esAnimales && (
+                <>
+                  <Row label="N° cabezas" value={camion.acopladoCabezas ?? null} />
+                  <Row label="Pisos" value={camion.acopladoPisos ?? null} />
+                </>
+              )}
+            </Section>
+          )}
+          {tieneAcoplado && !hayDatosAcoplado && (
+            <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
+              <Icon name="info" size={18} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+              Sin datos del acoplado. Completalos desde "Editar".
+            </div>
+          )}
+
+          {/* Certificaciones */}
+          <Section title="Certificaciones">
+            {camion.catCert && <Row label="CAT" value="Vigente" />}
+            {camion.rutaCert && <Row label="Permiso de Ruta" value="Vigente" />}
+            {camion.haciendaCert && <Row label="SENASA Hacienda" value="Habilitado" />}
+            {camion.grainCert && camion.grainCert !== 'none' && (
+              <Row label="Cert. granos" value={camion.grainCert === 'senasa' ? 'SENASA' : 'Orgánico'} />
+            )}
+            {!camion.catCert && !camion.rutaCert && !camion.haciendaCert && (!camion.grainCert || camion.grainCert === 'none') && (
+              <div style={{ gridColumn: 'span 2', color: 'var(--text-tertiary)', fontSize: 13 }}>Sin certificaciones cargadas.</div>
+            )}
+          </Section>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function CamionDetailPage({ camion, viajes, clientes, detailData, loading = false, onBack, onViewViaje, onSetTires, onAddDoc, onDeleteDoc, onAddTaller, onEditTaller, onDeleteTaller, choferes, onSaveChofer, onDesvincularChofer, onSeleccionarChofer, onEditarCamion }: CamionDetailPageProps) {
   const [tab, setTab] = useState('dashboard')
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [fichaOpen, setFichaOpen] = useState(false)
   const { chofer, docs, taller, tires } = detailData
 
   useEffect(() => { setTab('dashboard') }, [camion.id])
@@ -1904,7 +2054,7 @@ export function CamionDetailPage({ camion, viajes, clientes, detailData, loading
         </div>
         <div className="actions">
           <Button variant="secondary" icon="edit" onClick={() => setEditModalOpen(true)}>Editar</Button>
-          <Button variant="secondary" icon="picture_as_pdf">Ficha técnica</Button>
+          <Button variant="secondary" icon="picture_as_pdf" onClick={() => setFichaOpen(true)}>Ficha técnica</Button>
         </div>
       </div>
 
@@ -1949,6 +2099,7 @@ export function CamionDetailPage({ camion, viajes, clientes, detailData, loading
           setEditModalOpen(false)
         }}
       />
+      {fichaOpen && <FichaTecnicaModal camion={camion} onClose={() => setFichaOpen(false)} />}
     </>
   )
 }

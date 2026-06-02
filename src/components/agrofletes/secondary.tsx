@@ -403,6 +403,8 @@ export interface NuevaUnidadData {
   acopladoLargo: string
   acopladoAncho: string
   acopladoAlto: string
+  acopladoCabezas: string
+  acopladoPisos: string
   // Certificaciones adicionales
   catCert: boolean
   rutaCert: boolean
@@ -448,7 +450,7 @@ export function CamionesPage({ camiones, viajes = [], onNuevoCamion, onSaveChofe
 
   // Compute active status from viajes
   function getCamionEstado(c: Camion): string {
-    const hasViaje = viajes.some(v => v.camionId === c.id && v.estado === 'EN_TRANSITO')
+    const hasViaje = viajes.some(v => v.camionId === c.id && v.estado === 'REALIZADO')
     return hasViaje ? 'en_viaje' : 'disponible'
   }
 
@@ -635,6 +637,8 @@ const EMPTY_UNIDAD: NuevaUnidadData = {
   acopladoLargo: '',
   acopladoAncho: '',
   acopladoAlto: '',
+  acopladoCabezas: '',
+  acopladoPisos: '',
   catCert: false,
   rutaCert: false,
   haciendaCert: false,
@@ -653,6 +657,15 @@ const TIPOS_CARRETON: TipoCamion[] = ['carreton', 'camilla']
 const TIPOS_HACIENDA: TipoCamion[] = ['jaula_hacienda']
 // Tipos sin acoplado propio (unidad autoportante)
 const TIPOS_SIN_ACOPLADO: TipoCamion[] = ['chasis', 'hidrogua']
+
+// Categorías de acoplado — determinan qué campos mostrar en el formulario
+// Categoría 1: Máquinas + Cargas generales → Marca/Modelo/Año + Peso + Dimensiones
+// Categoría 2: Animales → Marca/Modelo/Año + Peso + Cabezas + Pisos
+// Categoría 3: Cereales/Fertilizantes → Marca/Modelo/Año + Peso
+const TIPOS_ACOPLADO_ANIMALES: TipoCamion[] = ['jaula_hacienda']
+const TIPOS_ACOPLADO_CEREALES: TipoCamion[] = ['tolva', 'acoplado', 'semirremolque']
+// El resto con acoplado (carreton, camilla, plataforma, semi_playo, semi_sider, semi_batea, semi_baranda, frigorifico, cisterna)
+// caen en categoría 1 (Máquinas + Cargas generales)
 
 export function NuevaUnidadModal({ open, onClose, onSave, initialData }: NuevaUnidadModalProps) {
   const [data, setData] = useState<NuevaUnidadData>(EMPTY_UNIDAD)
@@ -790,81 +803,91 @@ export function NuevaUnidadModal({ open, onClose, onSave, initialData }: NuevaUn
           </div>
 
           {/* ── Sección 4: Datos del acoplado ── */}
-          {data.tipo && !TIPOS_SIN_ACOPLADO.includes(data.tipo as TipoCamion) && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 16 }}>
-                Datos del acoplado / remolque
+          {data.tipo && !TIPOS_SIN_ACOPLADO.includes(data.tipo as TipoCamion) && (() => {
+            const esAnimales = TIPOS_ACOPLADO_ANIMALES.includes(data.tipo as TipoCamion)
+            const esCereales = TIPOS_ACOPLADO_CEREALES.includes(data.tipo as TipoCamion)
+            const titulo = esAnimales ? 'Datos del acoplado — Animales' : esCereales ? 'Datos del acoplado — Cereales / Fertilizantes' : 'Datos del acoplado — Cargas'
+            return (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 16 }}>
+                  {titulo}
+                </div>
+                {/* Marca / Modelo / Año — común a las 3 categorías */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: 16, marginBottom: 16 }}>
+                  <Field label="Marca">
+                    <Input
+                      placeholder="Ej: Bañado, Agroinox..."
+                      value={data.acopladoMarca}
+                      onChange={(e) => set('acopladoMarca', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Modelo">
+                    <Input
+                      placeholder={esAnimales ? 'Ej: Jaula 3 pisos' : esCereales ? 'Ej: Tolva 3 ejes' : 'Ej: Plataforma extensible'}
+                      value={data.acopladoModelo}
+                      onChange={(e) => set('acopladoModelo', e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Año">
+                    <Input
+                      type="number"
+                      placeholder="2018"
+                      min="1990"
+                      max="2030"
+                      value={data.acopladoAnio}
+                      onChange={(e) => set('acopladoAnio', e.target.value)}
+                    />
+                  </Field>
+                </div>
+
+                {/* Categoría 1: Máquinas + Cargas generales → Peso + Dimensiones */}
+                {!esAnimales && !esCereales && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16 }}>
+                    <Field label="Tn máximas">
+                      <Input type="number" placeholder="32" min="0" step="0.5" value={data.acopladoPesoMaxTon} onChange={(e) => set('acopladoPesoMaxTon', e.target.value)} />
+                    </Field>
+                    <Field label="Largo (m)">
+                      <Input type="number" placeholder="14.5" min="0" step="0.1" value={data.acopladoLargo} onChange={(e) => set('acopladoLargo', e.target.value)} />
+                    </Field>
+                    <Field label="Ancho (m)">
+                      <Input type="number" placeholder="2.6" min="0" step="0.05" value={data.acopladoAncho} onChange={(e) => set('acopladoAncho', e.target.value)} />
+                    </Field>
+                    <Field label="Alto (m)">
+                      <Input type="number" placeholder="3.2" min="0" step="0.05" value={data.acopladoAlto} onChange={(e) => set('acopladoAlto', e.target.value)} />
+                    </Field>
+                  </div>
+                )}
+
+                {/* Categoría 2: Animales → Peso + Cabezas + Pisos */}
+                {esAnimales && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                    <Field label="Tn máximas">
+                      <Input type="number" placeholder="20" min="0" step="0.5" value={data.acopladoPesoMaxTon} onChange={(e) => set('acopladoPesoMaxTon', e.target.value)} />
+                    </Field>
+                    <Field label="N° cabezas (bovinos)">
+                      <Input type="number" placeholder="Ej: 24" min="1" value={data.acopladoCabezas} onChange={(e) => set('acopladoCabezas', e.target.value)} />
+                    </Field>
+                    <Field label="Pisos">
+                      <SelectInput
+                        options={[{ value: '1', label: '1 piso' }, { value: '2', label: '2 pisos' }, { value: '3', label: '3 pisos' }]}
+                        value={data.acopladoPisos || '1'}
+                        onChange={(e) => set('acopladoPisos', e.target.value)}
+                      />
+                    </Field>
+                  </div>
+                )}
+
+                {/* Categoría 3: Cereales/Fertilizantes → solo Peso */}
+                {esCereales && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '160px', gap: 16 }}>
+                    <Field label="Tn máximas">
+                      <Input type="number" placeholder="32" min="0" step="0.5" value={data.acopladoPesoMaxTon} onChange={(e) => set('acopladoPesoMaxTon', e.target.value)} />
+                    </Field>
+                  </div>
+                )}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: 16, marginBottom: 16 }}>
-                <Field label="Marca acoplado">
-                  <Input
-                    placeholder="Ej: Bañado, Agroinox..."
-                    value={data.acopladoMarca}
-                    onChange={(e) => set('acopladoMarca', e.target.value)}
-                  />
-                </Field>
-                <Field label="Modelo acoplado">
-                  <Input
-                    placeholder="Ej: Tolva 3 ejes..."
-                    value={data.acopladoModelo}
-                    onChange={(e) => set('acopladoModelo', e.target.value)}
-                  />
-                </Field>
-                <Field label="Año">
-                  <Input
-                    type="number"
-                    placeholder="Ej: 2018"
-                    min="1990"
-                    max="2030"
-                    value={data.acopladoAnio}
-                    onChange={(e) => set('acopladoAnio', e.target.value)}
-                  />
-                </Field>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16 }}>
-                <Field label="Tn máximas">
-                  <Input
-                    type="number"
-                    placeholder="Ej: 32"
-                    min="0"
-                    step="0.5"
-                    value={data.acopladoPesoMaxTon}
-                    onChange={(e) => set('acopladoPesoMaxTon', e.target.value)}
-                  />
-                </Field>
-                <Field label="Largo (m)">
-                  <Input
-                    type="number"
-                    placeholder="Ej: 14.5"
-                    min="0"
-                    step="0.1"
-                    value={data.acopladoLargo}
-                    onChange={(e) => set('acopladoLargo', e.target.value)}
-                  />
-                </Field>
-                <Field label="Ancho (m)">
-                  <Input
-                    type="number"
-                    placeholder="Ej: 2.6"
-                    min="0"
-                    step="0.05"
-                    value={data.acopladoAncho}
-                    onChange={(e) => set('acopladoAncho', e.target.value)}
-                  />
-                </Field>
-                <Field label="Alto (m)">
-                  <Input
-                    type="number"
-                    placeholder="Ej: 3.2"
-                    min="0"
-                    step="0.05"
-                    value={data.acopladoAlto}
-                    onChange={(e) => set('acopladoAlto', e.target.value)}
-                  />
-                </Field>
-              </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* ── Sección 5: Certificaciones y equipamiento ── */}
           <div>

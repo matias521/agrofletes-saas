@@ -9,6 +9,7 @@ import type { TipoDoc } from '@/lib/agrofletes-data'
 import { ClientesPage, CamionesPage, ReportesPage, ConfigPage, NuevaUnidadData, NuevoClienteData } from '@/components/agrofletes/secondary'
 import { CamionDetailPage, CamionDetailData, NuevoDocData, NuevaTallerVisitaData, NuevoChoferData } from '@/components/agrofletes/camion-detail'
 import { ChoferesPage, ChoferDetailPage, ChoferFormModal } from '@/components/agrofletes/choferes'
+import { LiquidacionesPage } from '@/components/agrofletes/liquidaciones'
 import { OnboardingFlow } from '@/components/agrofletes/onboarding'
 import {
   Viaje,
@@ -28,10 +29,15 @@ import {
   estadoVencimiento,
   TIPOS_DOC_VEHICULO,
   AlertaFlota,
+  Liquidacion,
+  LiquidacionItem,
+  ChoferLiquidacionResumen,
+  NuevaLiquidacionForm,
+  liquidacionFromDB,
 } from '@/lib/agrofletes-data'
 import { createClient } from '@/lib/supabase'
 
-type PageKey = 'inicio' | 'viajes' | 'clientes' | 'camiones' | 'choferes' | 'reportes' | 'configuracion'
+type PageKey = 'inicio' | 'viajes' | 'clientes' | 'camiones' | 'choferes' | 'liquidaciones' | 'reportes' | 'configuracion'
 
 function AppContent() {
   const router = useRouter()
@@ -58,6 +64,14 @@ function AppContent() {
   const [loading, setLoading] = useState(true)
   const [alertasFlota, setAlertasFlota] = useState<AlertaFlota[]>([])
   const [user, setUser] = useState<{ id: string; email?: string } | null>(null)
+  const [liquidaciones, setLiquidaciones] = useState<Liquidacion[]>([])
+  const [choferResumenes, setChoferResumenes] = useState<ChoferLiquidacionResumen[]>([])
+  const [periodoLiquidaciones, setPeriodoLiquidaciones] = useState<{ desde: string; hasta: string; label: string }>(() => {
+    const now = new Date()
+    const desde = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+    const hasta = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+    return { desde, hasta, label: 'Este mes' }
+  })
 
   useEffect(() => {
     const load = async () => {
@@ -261,7 +275,7 @@ function AppContent() {
       tipo_carga_label: data.tipoCargaLabel,
       toneladas: parseFloat(data.toneladas) || 0,
       monto: data.total,
-      estado: 'BORRADOR',
+      estado: 'REALIZADO',
       docs: [],
       notas: data.notas || '',
     }).select().single()
@@ -316,6 +330,18 @@ function AppContent() {
       grain_cert: data.grainCert,
       has_gps: data.hasGps,
       activo: true,
+      acoplado_marca: data.acopladoMarca || null,
+      acoplado_modelo: data.acopladoModelo || null,
+      acoplado_anio: parseInt(data.acopladoAnio) || null,
+      acoplado_peso_max_ton: parseFloat(data.acopladoPesoMaxTon) || null,
+      acoplado_largo: parseFloat(data.acopladoLargo) || null,
+      acoplado_ancho: parseFloat(data.acopladoAncho) || null,
+      acoplado_alto: parseFloat(data.acopladoAlto) || null,
+      acoplado_cabezas: parseInt(data.acopladoCabezas) || null,
+      acoplado_pisos: parseInt(data.acopladoPisos) || null,
+      cat_cert: data.catCert,
+      ruta_cert: data.rutaCert,
+      hacienda_cert: data.haciendaCert,
     }).select().single()
     if (row) {
       const camion = camionFromDB(row)
@@ -341,6 +367,18 @@ function AppContent() {
       volumen_m3: parseFloat(data.volumenM3) || null,
       grain_cert: data.grainCert,
       has_gps: data.hasGps,
+      acoplado_marca: data.acopladoMarca || null,
+      acoplado_modelo: data.acopladoModelo || null,
+      acoplado_anio: parseInt(data.acopladoAnio) || null,
+      acoplado_peso_max_ton: parseFloat(data.acopladoPesoMaxTon) || null,
+      acoplado_largo: parseFloat(data.acopladoLargo) || null,
+      acoplado_ancho: parseFloat(data.acopladoAncho) || null,
+      acoplado_alto: parseFloat(data.acopladoAlto) || null,
+      acoplado_cabezas: parseInt(data.acopladoCabezas) || null,
+      acoplado_pisos: parseInt(data.acopladoPisos) || null,
+      cat_cert: data.catCert,
+      ruta_cert: data.rutaCert,
+      hacienda_cert: data.haciendaCert,
     }).eq('id', camionId).select().single()
     if (row) {
       const updated = camionFromDB(row)
@@ -483,6 +521,7 @@ function AppContent() {
     dni: data.dni || null,
     tel: data.tel || null,
     email: data.email || null,
+    porcentaje_liquidacion: parseFloat(data.porcentaje) || 0,
     lic_cat: data.licCat || null,
     lic_numero: data.licNumero || null,
     lic_venc: data.licVenc || null,
@@ -655,6 +694,244 @@ function AppContent() {
     router.push('/login')
   }, [router])
 
+  // ── Liquidaciones ─────────────────────────────────────────────────────────────
+
+  const handleActualizarPorcentajeViaje = useCallback(async (viajeId: string, porcentaje: number | null) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('viajes').update({ porcentaje }).eq('id', viajeId)
+    if (error) { showToast(`Error: ${error.message}`); return }
+    setViajes(prev => prev.map(v => v.id === viajeId ? { ...v, porcentaje } : v))
+  }, [showToast])
+
+  const handleEditarPorcentajeChofer = useCallback(async (choferId: string, porcentaje: number) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('camion_choferes').update({ porcentaje_liquidacion: porcentaje }).eq('id', choferId)
+    if (!error) {
+      setChoferes((prev) => prev.map(c => c.id === choferId ? { ...c, porcentajeBase: porcentaje } : c))
+      showToast(`Porcentaje actualizado a ${porcentaje}%.`)
+    } else { showToast(`Error: ${error.message}`) }
+  }, [showToast])
+
+  const handleRegistrarPago = useCallback(async (
+    choferId: string,
+    camionId: string | null,
+    monto: number,
+    fecha: string,
+    periodoDede: string,
+    periodoHasta: string,
+    totalBruto: number,
+  ) => {
+    if (!user) return
+    const supabase = createClient()
+    const { data: liqRow, error } = await supabase.from('liquidaciones').insert({
+      user_id: user.id,
+      chofer_id: choferId,
+      periodo_desde: periodoDede,
+      periodo_hasta: periodoHasta,
+      total_bruto: totalBruto,
+      total_chofer: monto,
+      bonus_viajes_min: null,
+      bonus_porcentaje: null,
+      bonus_monto: 0,
+      estado: 'pagado',
+      fecha_pago: fecha,
+    }).select().single()
+    if (error || !liqRow) { showToast(`Error: ${error?.message}`); return }
+
+    if (camionId) {
+      const entregadosIds = viajes
+        .filter(v => v.camionId === camionId && v.fecha >= periodoDede && v.fecha <= periodoHasta && v.estado === 'REALIZADO')
+        .map(v => v.id)
+      if (entregadosIds.length > 0) {
+        await supabase.from('viajes').update({ estado: 'LIQUIDADO' }).in('id', entregadosIds)
+        setViajes(prev => prev.map(v => entregadosIds.includes(v.id) ? { ...v, estado: 'LIQUIDADO' as const } : v))
+      }
+    }
+
+    setLiquidaciones(prev => [liquidacionFromDB(liqRow), ...prev])
+    showToast('Pago registrado.')
+  }, [user, viajes, showToast])
+
+  const handleFetchLiquidacionItems = useCallback(async (liquidacionId: string): Promise<LiquidacionItem[]> => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('liquidacion_items')
+      .select('*, viajes(numero, origen, destino, monto)')
+      .eq('liquidacion_id', liquidacionId)
+    return (data ?? []).map((row: Record<string, unknown>) => ({
+      id: String(row.id),
+      liquidacionId: String(row.liquidacion_id),
+      viajeId: String(row.viaje_id),
+      viajeNumero: (row.viajes as Record<string, unknown> | null)?.numero as number | undefined,
+      viajeOrigen: (row.viajes as Record<string, unknown> | null)?.origen as string | undefined,
+      viajeDestino: (row.viajes as Record<string, unknown> | null)?.destino as string | undefined,
+      viajeMontoOriginal: (row.viajes as Record<string, unknown> | null)?.monto as number | undefined,
+      montoViaje: Number(row.monto_viaje),
+      porcentaje: Number(row.porcentaje),
+      montoChofer: Number(row.monto_chofer),
+    }))
+  }, [])
+
+  const fetchLiquidaciones = useCallback(async () => {
+    if (!user) return
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('liquidaciones')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) { showToast(`Error al cargar liquidaciones: ${error.message}`); return }
+    setLiquidaciones((data ?? []).map(liquidacionFromDB))
+  }, [user, showToast])
+
+  useEffect(() => {
+    if (user) fetchLiquidaciones()
+  }, [user, fetchLiquidaciones])
+
+  const computeResumenes = useCallback((desde: string, hasta: string, liqList: Liquidacion[]) => {
+    const resumenes: ChoferLiquidacionResumen[] = choferes.map((chofer) => {
+      const viajesChofer = viajes.filter(
+        (v) => v.camionId === chofer.camionId &&
+          v.fecha >= desde && v.fecha <= hasta &&
+          true
+      )
+      const facturacionBruta = viajesChofer.reduce((s, v) => s + v.monto, 0)
+      const totalCorresponde = Math.round(viajesChofer.reduce((s, v) => {
+        const pct = v.porcentaje ?? chofer.porcentajeBase
+        return s + v.monto * pct / 100
+      }, 0))
+      const liqChofer = liqList.filter(
+        (l) => l.choferId === chofer.id &&
+          l.periodoDede >= desde && l.periodoHasta <= hasta &&
+          l.estado === 'pagado'
+      )
+      const totalPagado = liqChofer.reduce((s, l) => s + l.totalChofer, 0)
+      const deudaPendiente = totalCorresponde - totalPagado
+      const hayLiqParcial = liqChofer.length > 0 && deudaPendiente > 0
+      const estado: ChoferLiquidacionResumen['estado'] =
+        viajesChofer.length === 0 ? 'sin_viajes'
+        : deudaPendiente <= 0 ? 'al_dia'
+        : hayLiqParcial ? 'parcial'
+        : 'pendiente'
+      const viajesPendientes = viajesChofer
+        .filter((v) => v.estado === 'REALIZADO')
+        .map((v) => ({ id: v.id, numero: v.numero, origen: v.origen, destino: v.destino, monto: v.monto, porcentaje: chofer.porcentajeBase }))
+      const camionObj = camiones.find((c) => c.id === chofer.camionId)
+      const camionInfo = camionObj ? `${camionObj.marca} ${camionObj.modelo}`.trim() : 'Sin camión asignado'
+      return {
+        choferId: chofer.id,
+        camionId: chofer.camionId,
+        camionPatente: camionObj?.patente ?? '',
+        choferNombre: chofer.nombre,
+        choferIniciales: chofer.iniciales,
+        choferPorcentajeBase: chofer.porcentajeBase,
+        camionInfo,
+        facturacionBruta,
+        totalViajes: viajesChofer.length,
+        totalCorresponde,
+        totalPagado,
+        deudaPendiente,
+        estado,
+        viajesPendientes,
+      }
+    })
+    setChoferResumenes(resumenes)
+  }, [choferes, viajes, camiones])
+
+  useEffect(() => {
+    computeResumenes(periodoLiquidaciones.desde, periodoLiquidaciones.hasta, liquidaciones)
+  }, [periodoLiquidaciones, liquidaciones, computeResumenes])
+
+  const handleCambioPeriodo = useCallback((periodo: string) => {
+    const now = new Date()
+    let desde: string, hasta: string, label: string
+    if (periodo === 'este_mes') {
+      desde = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+      hasta = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+      label = 'Este mes'
+    } else if (periodo === 'quincena') {
+      const day = now.getDate()
+      if (day <= 15) {
+        desde = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
+        hasta = new Date(now.getFullYear(), now.getMonth(), 15).toISOString().slice(0, 10)
+      } else {
+        desde = new Date(now.getFullYear(), now.getMonth(), 16).toISOString().slice(0, 10)
+        hasta = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+      }
+      label = 'Quincena actual'
+    } else if (periodo === 'mes_pasado') {
+      desde = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10)
+      hasta = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10)
+      label = 'Mes pasado'
+    } else {
+      return
+    }
+    setPeriodoLiquidaciones({ desde, hasta, label })
+  }, [])
+
+  const handleCambioPeriodoCustom = useCallback((desde: string, hasta: string) => {
+    setPeriodoLiquidaciones({ desde, hasta, label: 'Personalizado' })
+  }, [])
+
+  const handleCrearLiquidacion = useCallback(async (data: NuevaLiquidacionForm) => {
+    if (!user) return
+    const supabase = createClient()
+    const { data: liqRow, error: liqErr } = await supabase.from('liquidaciones').insert({
+      user_id: user.id,
+      chofer_id: data.choferId,
+      periodo_desde: data.periodoDede,
+      periodo_hasta: data.periodoHasta,
+      total_bruto: data.totalBruto,
+      total_chofer: data.totalChofer,
+      bonus_viajes_min: data.bonusViajesMin ?? null,
+      bonus_porcentaje: data.bonusPorcentaje ?? null,
+      bonus_monto: data.bonusMonto,
+      estado: 'a_pagar',
+    }).select().single()
+    if (liqErr || !liqRow) { showToast(`Error al crear liquidación: ${liqErr?.message}`); return }
+
+    const itemsPayload = data.items.map((item) => ({
+      liquidacion_id: liqRow.id,
+      viaje_id: item.viajeId,
+      monto_viaje: item.montoViaje,
+      porcentaje: item.porcentaje,
+      monto_chofer: item.montoChofer,
+    }))
+    const { error: itemsErr } = await supabase.from('liquidacion_items').insert(itemsPayload)
+    if (itemsErr) { showToast(`Error al guardar items: ${itemsErr.message}`); return }
+
+    const viajeIds = data.items.map((i) => i.viajeId)
+    const { error: viajeErr } = await supabase.from('viajes').update({ estado: 'LIQUIDADO' }).in('id', viajeIds)
+    if (viajeErr) { showToast(`Error al actualizar viajes: ${viajeErr.message}`); return }
+
+    setViajes((prev) => prev.map((v) => viajeIds.includes(v.id) ? { ...v, estado: 'LIQUIDADO' as const } : v))
+    setLiquidaciones((prev) => [liquidacionFromDB(liqRow), ...prev])
+    showToast('Liquidación generada.')
+  }, [user, showToast])
+
+  const handleMarcarPagada = useCallback(async (id: string, fechaPago: string) => {
+    const supabase = createClient()
+    const { error } = await supabase.from('liquidaciones').update({ estado: 'pagado', fecha_pago: fechaPago }).eq('id', id)
+    if (error) { showToast(`Error: ${error.message}`); return }
+    setLiquidaciones((prev) => prev.map((l) => l.id === id ? { ...l, estado: 'pagado' as const, fechaPago } : l))
+    showToast('Liquidación marcada como pagada.')
+  }, [showToast])
+
+  const handleAnularLiquidacion = useCallback(async (id: string) => {
+    const supabase = createClient()
+    const { data: items, error: itemsErr } = await supabase.from('liquidacion_items').select('viaje_id').eq('liquidacion_id', id)
+    if (itemsErr) { showToast(`Error: ${itemsErr.message}`); return }
+    const viajeIds = (items ?? []).map((i: { viaje_id: string }) => i.viaje_id)
+    if (viajeIds.length > 0) {
+      const { error: vErr } = await supabase.from('viajes').update({ estado: 'REALIZADO' }).in('id', viajeIds)
+      if (vErr) { showToast(`Error al revertir viajes: ${vErr.message}`); return }
+      setViajes((prev) => prev.map((v) => viajeIds.includes(v.id) ? { ...v, estado: 'REALIZADO' as const } : v))
+    }
+    const { error } = await supabase.from('liquidaciones').update({ estado: 'anulado' }).eq('id', id)
+    if (error) { showToast(`Error: ${error.message}`); return }
+    setLiquidaciones((prev) => prev.map((l) => l.id === id ? { ...l, estado: 'anulado' as const } : l))
+    showToast('Liquidación anulada. Los viajes volvieron a Realizado.')
+  }, [showToast])
+
   if (loading) {
     return (
       <div style={{
@@ -765,6 +1042,20 @@ function AppContent() {
             camiones={camiones}
             onViewChofer={(c) => { setActivePage('choferes'); setOpenChofer(c) }}
             onNewChofer={() => { setEditingChofer(null); setChoferFormOpen(true) }}
+          />
+        )
+      case 'liquidaciones':
+        return (
+          <LiquidacionesPage
+            resumenes={choferResumenes}
+            liquidaciones={liquidaciones}
+            viajes={viajes}
+            clientes={clientes}
+            periodoFiltro={periodoLiquidaciones}
+            onRegistrarPago={handleRegistrarPago}
+            onCambioPeriodoCustom={handleCambioPeriodoCustom}
+            onEditarPorcentajeChofer={handleEditarPorcentajeChofer}
+            onActualizarPorcentajeViaje={handleActualizarPorcentajeViaje}
           />
         )
       case 'reportes':

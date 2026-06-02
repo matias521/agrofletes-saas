@@ -7,7 +7,7 @@ import { COMPANY } from '@/lib/agrofletes-data'
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
-type PageKey = 'inicio' | 'viajes' | 'clientes' | 'camiones' | 'choferes' | 'reportes' | 'configuracion'
+type PageKey = 'inicio' | 'viajes' | 'clientes' | 'camiones' | 'choferes' | 'liquidaciones' | 'reportes' | 'configuracion'
 
 interface NavItemDef {
   key: PageKey
@@ -22,6 +22,7 @@ const NAV_ITEMS: NavItemDef[] = [
   { key: 'clientes',      label: 'Clientes',        icon: 'groups' },
   { key: 'camiones',      label: 'Camiones',        icon: 'directions_car' },
   { key: 'choferes',      label: 'Choferes',        icon: 'badge' },
+  { key: 'liquidaciones', label: 'Liquidaciones',   icon: 'payments' },
 ]
 
 const NAV_BOTTOM: NavItemDef[] = [
@@ -275,6 +276,7 @@ const PAGE_LABELS: Record<PageKey, string> = {
   clientes:      'Clientes',
   camiones:      'Camiones',
   choferes:      'Choferes',
+  liquidaciones: 'Liquidaciones',
   reportes:      'Reportes',
   configuracion: 'Configuración',
 }
